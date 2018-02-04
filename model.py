@@ -7,7 +7,7 @@ import AdamOpt
 from parameters import *
 import os, time
 import pickle
-import top_down
+import convolutional_layers
 import matplotlib.pyplot as plt
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID" # so the IDs match nvidia-smi
@@ -59,16 +59,11 @@ class Model:
                 b = tf.get_variable('b', initializer = tf.zeros([1,par['layer_dims'][n+1]]), trainable = True if n<par['n_layers']-2 else False)
 
                 if n < par['n_layers']-2:
-                    print('x',self.x)
-                    print('W',W)
-                    print('gating ',n, ' ', self.gating[n])
                     self.x = tf.nn.dropout(tf.nn.relu(tf.matmul(self.x,W) + b), self.droput_keep_pct)
                     self.x = self.x*tf.tile(tf.reshape(self.gating[n],[1,par['layer_dims'][n+1]]),[par['batch_size'],1])
 
                 else:
                     self.y = tf.matmul(self.x,W) + b  - (1-self.mask)*1e16
-                    #self.y = tf.nn.softmax(tf.matmul(self.x,W) + b  - (1-self.mask)*1e16, dim = 1)
-                    print('y', self.y)
 
 
     def apply_convulational_layers(self):
@@ -159,7 +154,6 @@ class Model:
         for lp in log_p_theta:
             grads_and_vars = opt.compute_gradients(lp)
             for grad, var in grads_and_vars:
-                #print(var.op.name, grad)
                 fisher_ops.append(tf.assign_add(self.big_omega_var[var.op.name], \
                     grad*grad/par['batch_size']/par['EWC_fisher_num_batches']))
 
@@ -202,9 +196,10 @@ def main(save_fn, gpu_id):
 
     os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id
 
-    #determine_top_down_weights()
+    # train the convolutional layers with the CIFAR-10 dataset
+    # otherwise, it will load the convolutional weights from the saved file
     if par['task'] == 'cifar' and par['train_convolutional_layers']:
-        top_down.ConvolutionalLayers()
+        convolutional_layers.ConvolutionalLayers()
 
     print('\nRunning model.\n')
 
@@ -212,7 +207,7 @@ def main(save_fn, gpu_id):
     tf.reset_default_graph()
 
     # Create placeholders for the model
-    # input_data, td_data, target_data, learning_rate, stim_train
+    # input_data, target_data, gating, mask, dropout keep pct hidden layers, dropout keep pct input layers
     if par['task'] == 'mnist':
         x  = tf.placeholder(tf.float32, [par['batch_size'], par['layer_dims'][0]], 'stim')
     elif par['task'] == 'cifar':
@@ -238,11 +233,12 @@ def main(save_fn, gpu_id):
 
         for task in range(par['n_tasks']):
 
+            # create dictionary of gating signals applied to each hidden layer for this task
             gating_dict = {k:v for k,v in zip(gating, par['gating'][task])}
-            print('omega c', par['omega_c'])
 
             for i in range(par['n_train_batches']):
 
+                # make batch of training data
                 stim_in, y_hat, mk = stim.make_batch(task, test = False)
 
                 if par['stabilization'] == 'pathint':
@@ -267,11 +263,13 @@ def main(save_fn, gpu_id):
                     big_omegas = sess.run([model.update_big_omega,model.big_omega_var], feed_dict = \
                         {x:stim_in, y:y_hat, **gating_dict, mask:mk, droput_keep_pct:1.0, input_droput_keep_pct:1.0})
 
+            # Reset the Adam Optimizer, and set the previous parater values to their current values
             sess.run(model.reset_adam_op)
             sess.run(model.reset_prev_vars)
             if par['stabilization'] == 'pathint':
                 sess.run(model.reset_small_omega)
 
+            # Test the netwroks on all trained tasks
             num_test_reps = 10
             accuracy = np.zeros((task+1))
             for test_task in range(task+1):
