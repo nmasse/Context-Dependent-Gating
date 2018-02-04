@@ -27,8 +27,9 @@ par = {
 
     'layer_dims'            : [28**2, 2000, 2000, 10], # mnist
     #'layer_dims'            : [4096, 1000, 1000, 5], #cifar
-    'pct_active_neurons'    : 1.0,
-    'multihead'             : False, # option for CIFAR task, do we use different output neurons for each label nad add a mask, or recycle them
+    'gate_pct'              : 0.0, # percentage of hidden units to gate. Only used when gating_type is set to XdG
+    'n_subnetworks'         : 5, # Only used when gating_type is set to split
+    'multihead'             : False, # option for CIFAR task, in which different unique output units are asscoaited with each label
 
     # Dropout
     'drop_keep_pct'         : 0.5,
@@ -43,13 +44,11 @@ par = {
     # Omega parameters
     'omega_c'               : 0.1,
     'omega_xi'              : 0.01,
-    'last_layer_mult'       : 2,
-    'scale_factor'          : 1,
 
-    # Projection of top-down activity
-    # Only one can be True
-    'clamp'                 : None, # can be either 'dendrites', 'neurons', 'partial' or None
     'EWC_fisher_num_batches': 32, # number of batches size when calculating EWC
+
+    # Type of gating signal
+    'gating_type'           : None, # can be either 'XdG', 'partial', 'split' or None
 
 }
 
@@ -58,8 +57,9 @@ par = {
 ############################
 
 def gen_gating():
-
-    m = round(1/par['pct_active_neurons'])
+    """
+    Generate the gating signal to applied to all hidden units
+    """
 
     par['gating'] = []
     for t in range(par['n_tasks']):
@@ -67,24 +67,25 @@ def gen_gating():
         for n in range(par['n_layers']-2):
             gating_layer = np.zeros((par['layer_dims'][n+1]), dtype = np.float32)
             for i in range(par['layer_dims'][n+1]):
-                if par['clamp'] == 'neurons':
-                    if np.random.rand() < par['pct_active_neurons']:
+                if par['gating_type'] == 'XdG':
+                    if np.random.rand() < 1-par['gate_pct']:
                         gating_layer[i] = 1
-                elif par['clamp'] == 'split':
-                    if t%m == i%m:
+                elif par['gating_type'] == 'split':
+                    if t%par['n_subnetworks'] == i%par['n_subnetworks']:
                         if np.random.rand() < 0.5:
                             gating_layer[i] = 0.5
                         else:
                             gating_layer[i] = 1
-                elif par['clamp'] == 'partial':
+                elif par['gating_type'] == 'partial':
                     if np.random.rand() < 0.5:
                         gating_layer[i] = 0.5
                     else:
                         gating_layer[i] = 1
-                elif par['clamp'] is None:
+                elif par['gating_type'] is None:
                     gating_layer[i] = 1
             gating_task.append(gating_layer)
         par['gating'].append(gating_task)
+
 
 
 def update_dependencies():
