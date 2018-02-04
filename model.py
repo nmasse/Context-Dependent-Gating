@@ -192,9 +192,10 @@ class Model:
                 update_small_omega_ops.append(tf.assign_add(small_omega_var[var.op.name], -self.delta_grads[var.op.name]*grad ) )
             self.update_small_omega = tf.group(*update_small_omega_ops) # 1) update small_omega after each train!
 
-def main(save_fn, gpu_id):
+def main(save_fn, gpu_id = None):
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id
+    if gpu_id is not None:
+        os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id
 
     # train the convolutional layers with the CIFAR-10 dataset
     # otherwise, it will load the convolutional weights from the saved file
@@ -231,9 +232,12 @@ def main(save_fn, gpu_id):
 
     with tf.Session() as sess:
 
-        with tf.device("/gpu:0"):
+        if gpu_id is None:
             model = Model(x, y, gating, mask, droput_keep_pct, input_droput_keep_pct)
-            init = tf.global_variables_initializer()
+        else:
+            with tf.device("/gpu:0"):
+                model = Model(x, y, gating, mask, droput_keep_pct, input_droput_keep_pct)
+        init = tf.global_variables_initializer()
         sess.run(init)
         t_start = time.time()
         sess.run(model.reset_prev_vars)

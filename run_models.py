@@ -6,16 +6,10 @@ import pickle
 
 
 def try_model(save_fn,gpu_id):
-    # GPU designated by first argument (must be integer 0-3)
-    try:
-        print('Selecting GPU ',  sys.argv[1])
-        assert(int(sys.argv[1]) in [0,1,2,3])
-    except AssertionError:
-        quit('Error: Select a valid GPU number.')
 
     try:
         # Run model
-        model.main(save_fn, sys.argv[1])
+        model.main(save_fn, gpu_id)
     except KeyboardInterrupt:
         quit('Quit by KeyboardInterrupt')
 
@@ -46,6 +40,16 @@ cifar_updates = {
     'multihead'             : False
     }
 
+
+# Second argument will select the GPU to use
+# Don't enter a second argument if you want TensorFlow to select the GPU/CPU
+try:
+    gpu_id = sys.argv[1]
+    print('Selecting GPU ', gpu_id)
+except:
+    gpu_id = None
+
+
 # updates for multi-head network, cifar only
 multi_updates = {'layer_dims':[4096, 1000, 1000, 100], 'multihead': True}
 
@@ -58,14 +62,14 @@ update_parameters(mnist_updates)
 update_parameters({'gating_type': 'XdG','gate_pct': 0.8, 'input_drop_keep_pct': 0.8})
 update_parameters({'stabilization': 'pathint', 'omega_c': 0.035, 'omega_xi': 0.01})
 save_fn = 'mnist_SI.pkl'
-try_model(save_fn, sys.argv[1])
+try_model(save_fn, gpu_id)
 
 print('MNIST - Synaptic Stabilization = EWC - Gating = 80%')
 update_parameters(mnist_updates)
 update_parameters({'gating_type': 'XdG','gate_pct': 0.8, 'input_drop_keep_pct': 0.8})
 update_parameters({'stabilization': 'EWC', 'omega_c': 10})
 save_fn = 'mnist_EWC.pkl'
-try_model(save_fn, sys.argv[1])
+try_model(save_fn, gpu_id)
 
 print('CIFAR - Synaptic Stabilization = SI - Gating = 75%')
 update_parameters(cifar_updates)
@@ -73,7 +77,7 @@ update_parameters({'gating_type': 'XdG','gate_pct': 0.75, 'input_drop_keep_pct':
 update_parameters({'stabilization': 'pathint', 'omega_c': 0.2, 'omega_xi': 0.01})
 update_parameters({'train_convolutional_layers': True})
 save_fn = 'cifar_SI.pkl'
-try_model(save_fn, sys.argv[1])
+try_model(save_fn, gpu_id)
 
 print('CIFAR - Synaptic Stabilization = EWC - Gating = 75%')
 update_parameters(cifar_updates)
@@ -81,4 +85,4 @@ update_parameters({'gating_type': 'XdG','gate_pct': 0.75, 'input_drop_keep_pct':
 update_parameters({'stabilization': 'EWC', 'omega_c': 10})
 update_parameters({'train_convolutional_layers': False})
 save_fn = 'cifar_EWC.pkl'
-try_model(save_fn, sys.argv[1])
+try_model(save_fn, gpu_id)
