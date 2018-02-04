@@ -46,14 +46,12 @@ cifar_updates = {
     'multihead'             : False
     }
 
-# updates for multi-head network
+# updates for multi-head network, cifar only
 multi_updates = {'layer_dims':[4096, 1000, 1000, 100], 'multihead': True}
 
 # updates for split networks
-mnist_split_updates = {'layer_dims':[784, 3665, 3665, 10], 'batch_size':128, \
-    'n_train_batches': 3906*2,'EWC_fisher_num_batches': 64}
+mnist_split_updates = {'layer_dims':[784, 3665, 3665, 10]}
 cifar_split_updates = {'layer_dims':[4096, 1164, 1164, 5]}
-
 
 print('MNIST - Synaptic Stabilization = SI - Gating = 80%')
 update_parameters(mnist_updates)
@@ -65,6 +63,22 @@ try_model(save_fn, sys.argv[1])
 print('MNIST - Synaptic Stabilization = EWC - Gating = 80%')
 update_parameters(mnist_updates)
 update_parameters({'gating_type': 'XdG','gate_pct': 0.8, 'input_drop_keep_pct': 0.8})
-update_parameters({'stabilization': 'EWC', 'omega_c': 30})
+update_parameters({'stabilization': 'EWC', 'omega_c': 10})
 save_fn = 'mnist_EWC.pkl'
+try_model(save_fn, sys.argv[1])
+
+print('CIFAR - Synaptic Stabilization = SI - Gating = 75%')
+update_parameters(cifar_updates)
+update_parameters({'gating_type': 'XdG','gate_pct': 0.75, 'input_drop_keep_pct': 1.0})
+update_parameters({'stabilization': 'pathint', 'omega_c': 0.2, 'omega_xi': 0.01})
+update_parameters({'train_convolutional_layers': True})
+save_fn = 'cifar_SI.pkl'
+try_model(save_fn, sys.argv[1])
+
+print('CIFAR - Synaptic Stabilization = EWC - Gating = 75%')
+update_parameters(cifar_updates)
+update_parameters({'gating_type': 'XdG','gate_pct': 0.75, 'input_drop_keep_pct': 1.0})
+update_parameters({'stabilization': 'EWC', 'omega_c': 10})
+update_parameters({'train_convolutional_layers': False})
+save_fn = 'cifar_EWC.pkl'
 try_model(save_fn, sys.argv[1])
