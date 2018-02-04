@@ -9,14 +9,14 @@ import matplotlib.pyplot as plt
 
 class Stimulus:
 
-    def __init__(self, include_cifar10 = False):
+    def __init__(self, include_cifar10 = False, cifar_labels_per_task = 5):
         if par['task'] == 'mnist':
             self.generate_mnist_tuning()
         elif par['task'] == 'cifar':
             self.cifar10_dir = './cifar/cifar-10-python/'
             self.cifar100_dir = './cifar/cifar-100-python/'
             self.num_cifar_labels = 110
-            self.cifar_labels_per_task = 5
+            self.cifar_labels_per_task = cifar_labels_per_task
             self.generate_cifar_tuning(include_cifar10)
             self.find_cifar_indices()
 

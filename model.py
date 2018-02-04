@@ -68,7 +68,7 @@ class Model:
 
     def apply_convulational_layers(self):
 
-        conv_weights = pickle.load(open('./encoder_testing/conv_weights.pkl','rb'))
+        conv_weights = pickle.load(open(par['save_dir'] + 'conv_weights.pkl','rb'))
 
         conv1 = tf.layers.conv2d(inputs=self.input_data,filters=32, kernel_size=[3, 3], kernel_initializer = \
             tf.constant_initializer(conv_weights['conv2d/kernel']),  bias_initializer = tf.constant_initializer(conv_weights['conv2d/bias']), \
@@ -199,7 +199,14 @@ def main(save_fn, gpu_id):
     # train the convolutional layers with the CIFAR-10 dataset
     # otherwise, it will load the convolutional weights from the saved file
     if par['task'] == 'cifar' and par['train_convolutional_layers']:
+        # CIFAR-10 training requires 10 output units
+        # Will revert to original network size after training the convolutional layers is complete
+        old_layer_dims = np.array(par['layer_dims'])
+        new_layer_dims = np.array(old_layer_dims)
+        new_layer_dims[-1] = 10
+        update_parameters({'layer_dims': new_layer_dims})
         convolutional_layers.ConvolutionalLayers()
+        update_parameters({'layer_dims': old_layer_dims})
 
     print('\nRunning model.\n')
 

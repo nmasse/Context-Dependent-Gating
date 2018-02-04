@@ -19,18 +19,19 @@ class ConvolutionalLayers:
 
         # Create placeholders for the model
         input_data  = tf.placeholder(tf.float32, [par['batch_size'], 32, 32, 3], 'stim')
-        target_data  = tf.placeholder(tf.float32, [par['batch_size'], 100], 'target')
+        target_data  = tf.placeholder(tf.float32, [par['batch_size'], 10], 'target')
         mask   = tf.placeholder(tf.float32, [par['batch_size'], par['layer_dims'][-1]], 'mask')
 
         print('Batch size:', par['batch_size'])
         print('Input size:', 32*32*3, '\n')
+        print('Training convolutional layers on the CIFAR-10 dataset...')
 
         with tf.Session() as sess:
             cifar_model   = self.model(input_data, target_data, mask)
             sess.run(tf.global_variables_initializer())
             t_start = time.time()
 
-            s = stimulus.Stimulus(include_cifar10 = True)
+            s = stimulus.Stimulus(include_cifar10 = True, cifar_labels_per_task = 10)
 
             for i in range(par['n_batches_top_down']):
 
