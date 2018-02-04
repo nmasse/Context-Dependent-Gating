@@ -1,5 +1,6 @@
 ### Authors: Nicolas Y. Masse, Gregory D. Grant
 
+
 import numpy as np
 from parameters import *
 import pickle
@@ -113,7 +114,7 @@ class Stimulus:
                 if par['multihead']:
                     k = int(self.cifar_test_labels[ind[q[i]]])
                 else:
-                    k = self.cifar_test_labels[ind[q[i]]][0]%5 # - task_num*self.cifar_labels_per_task)
+                    k = self.cifar_test_labels[ind[q[i]]][0]%self.cifar_labels_per_task
 
                 batch_labels[i, k] = 1
                 batch_data[i, :] = np.float32(np.reshape(self.cifar_test_images[ind[q[i]], :],(1,32,32,3), order='F'))/255
@@ -121,7 +122,7 @@ class Stimulus:
                 if par['multihead']:
                     k = int(self.cifar_train_labels[ind[q[i]]])
                 else:
-                    k = self.cifar_train_labels[ind[q[i]]][0]%5 #int(self.cifar_train_labels[ind[q[i]]] - task_num*self.cifar_labels_per_task)
+                    k = self.cifar_train_labels[ind[q[i]]][0]%self.cifar_labels_per_task
 
                 batch_labels[i, k] = 1
                 batch_data[i, :] = np.float32(np.reshape(self.cifar_train_images[ind[q[i]], :],(1,32,32,3), order='F'))/255
@@ -164,11 +165,5 @@ class Stimulus:
         else:
             raise Exception('Unrecognized task')
 
-        ### Currently unused ###
-        #if False and par['task'] == 'cifar' and task_num>0:
-            #task_num -= 1 # because we're not evaluating accuracy on task 0
 
-        # Create top_down activity
-        top_down = np.reshape(par['td_cases'][task_num, :],(1,-1))
-
-        return batch_data, batch_labels, top_down, mask
+        return batch_data, batch_labels, mask
