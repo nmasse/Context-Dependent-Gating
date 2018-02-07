@@ -6,7 +6,7 @@ Alleviating catastrophic forgetting using context-dependent gating and synaptic 
 Nicolas Y. Masse, Gregory D. Grant, David J. Freedman  
 https://arxiv.org/abs/1802.01569  
 
-Code requires:
+Code requires:  
 Python 3  
 TensorFlow 1+  
 
