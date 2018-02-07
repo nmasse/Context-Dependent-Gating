@@ -7,8 +7,8 @@ Nicolas Y. Masse, Gregory D. Grant, David J. Freedman
 https://arxiv.org/abs/1802.01569  
 
 Code requires:
-Python 3
-TensorFlow 1+
+Python 3  
+TensorFlow 1+  
 
 In the paper, the model is tested on:  
 MNIST dataset  
