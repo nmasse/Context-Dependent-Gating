@@ -39,7 +39,7 @@ par = {
     # Training specs
     'batch_size'            : 256,
     'n_train_batches'       : 3906, # 3906*256 = 20 epochs * 50000
-    'n_batches_top_down'    : 10000,
+    'n_batches_top_down'    : 20000,
 
     # Omega parameters
     'omega_c'               : 0.1,

@@ -16,22 +16,31 @@ class ConvolutionalLayers:
         tf.reset_default_graph()
         # Train on CIFAR-10 task
         task_id = 0
+        self.batch_size = 1024
 
+        current_layers = np.array(par['layer_dims'])
+        current_task = str(par['task'])
+        current_batch_size = int(par['batch_size'])
+
+        if par['task'] == 'cifar':
+            par['layer_dims'][-1] = 10
+            print('Training convolutional layers on the CIFAR-10 dataset...')
+        elif par['task'] == 'imagenet':
+            par['layer_dims'][-1] = 100
+            print('Training convolutional layers on the CIFAR-10 and CIFAR-100 datasets...')
+        par['task']  = 'cifar' # convolutional layers always trained on cifar
+        par['batch_size'] = 1024
         # Create placeholders for the model
         input_data  = tf.placeholder(tf.float32, [par['batch_size'], 32, 32, 3], 'stim')
-        target_data  = tf.placeholder(tf.float32, [par['batch_size'], 10], 'target')
+        target_data  = tf.placeholder(tf.float32, [par['batch_size'], par['layer_dims'][-1]], 'target')
         mask   = tf.placeholder(tf.float32, [par['batch_size'], par['layer_dims'][-1]], 'mask')
-
-        print('Batch size:', par['batch_size'])
-        print('Input size:', 32*32*3, '\n')
-        print('Training convolutional layers on the CIFAR-10 dataset...')
 
         with tf.Session() as sess:
             cifar_model   = self.model(input_data, target_data, mask)
             sess.run(tf.global_variables_initializer())
             t_start = time.time()
 
-            s = stimulus.Stimulus(include_cifar10 = True, cifar_labels_per_task = 10)
+            s = stimulus.Stimulus(include_cifar10 = True, labels_per_task = par['layer_dims'][-1], include_all = True)
 
             for i in range(par['n_batches_top_down']):
 
@@ -44,9 +53,12 @@ class ConvolutionalLayers:
             W = {}
             for var in tf.trainable_variables():
                 W[var.op.name] = var.eval()
-            fn = par['save_dir'] + 'conv_weights.pkl'
+            fn = par['save_dir'] + current_task + '_conv_weights.pkl'
             pickle.dump(W, open(fn,'wb'))
             print('Convolutional weights saved in ', fn)
+
+            # Revert to old parameters
+            update_parameters({'task': current_task, 'layer_dims': current_layers, 'batch_size': current_batch_size})
 
 
     def model(self, input_data, target_data, mask):

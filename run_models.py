@@ -40,6 +40,17 @@ cifar_updates = {
     'multihead'             : False
     }
 
+imagenet_updates = {
+    'layer_dims'            : [4096, 2000, 2000, 10],
+    'n_tasks'               : 100,
+    'task'                  : 'imagenet',
+    'save_dir'              : './savedir/',
+    'n_train_batches'       : 977,
+    'input_drop_keep_pct'   : 1.0,
+    'drop_keep_pct'         : 0.5,
+    'multihead'             : False
+    }
+
 
 # Second argument will select the GPU to use
 # Don't enter a second argument if you want TensorFlow to select the GPU/CPU
@@ -56,6 +67,16 @@ multi_updates = {'layer_dims':[4096, 1000, 1000, 100], 'multihead': True}
 # updates for split networks
 mnist_split_updates = {'layer_dims':[784, 3665, 3665, 10]}
 cifar_split_updates = {'layer_dims':[4096, 1164, 1164, 5]}
+
+print('ImageNet - Synaptic Stabilization = SI - Gating = 80%')
+update_parameters(imagenet_updates)
+update_parameters({'gating_type': 'XdG','gate_pct': 0.80, 'input_drop_keep_pct': 1.0})
+update_parameters({'stabilization': 'pathint', 'omega_c': 1.0, 'omega_xi': 0.01})
+update_parameters({'train_convolutional_layers': True})
+save_fn = 'imagenet_SI.pkl'
+try_model(save_fn, gpu_id)
+quit()
+
 
 print('MNIST - Synaptic Stabilization = SI - Gating = 80%')
 update_parameters(mnist_updates)

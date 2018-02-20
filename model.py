@@ -40,7 +40,7 @@ class Model:
 
     def run_model(self):
 
-        if par['task'] == 'cifar':
+        if par['task'] == 'cifar' or par['task'] == 'imagenet':
             self.x = self.apply_convulational_layers()
 
         elif par['task'] == 'mnist':
@@ -68,7 +68,8 @@ class Model:
 
     def apply_convulational_layers(self):
 
-        conv_weights = pickle.load(open(par['save_dir'] + 'conv_weights.pkl','rb'))
+        conv_weights = pickle.load(open(par['save_dir'] + par['task'] + '_conv_weights.pkl','rb'))
+        #conv_weights = pickle.load(open(par['save_dir'] + 'cifarconv_weights.pkl','rb'))
 
         conv1 = tf.layers.conv2d(inputs=self.input_data,filters=32, kernel_size=[3, 3], kernel_initializer = \
             tf.constant_initializer(conv_weights['conv2d/kernel']),  bias_initializer = tf.constant_initializer(conv_weights['conv2d/bias']), \
@@ -199,15 +200,8 @@ def main(save_fn, gpu_id = None):
 
     # train the convolutional layers with the CIFAR-10 dataset
     # otherwise, it will load the convolutional weights from the saved file
-    if par['task'] == 'cifar' and par['train_convolutional_layers']:
-        # CIFAR-10 training requires 10 output units
-        # Will revert to original network size after training the convolutional layers is complete
-        old_layer_dims = np.array(par['layer_dims'])
-        new_layer_dims = np.array(old_layer_dims)
-        new_layer_dims[-1] = 10
-        update_parameters({'layer_dims': new_layer_dims})
+    if (par['task'] == 'cifar' or par['task'] == 'imagenet') and par['train_convolutional_layers']:
         convolutional_layers.ConvolutionalLayers()
-        update_parameters({'layer_dims': old_layer_dims})
 
     print('\nRunning model.\n')
 
@@ -216,9 +210,10 @@ def main(save_fn, gpu_id = None):
 
     # Create placeholders for the model
     # input_data, target_data, gating, mask, dropout keep pct hidden layers, dropout keep pct input layers
+
     if par['task'] == 'mnist':
         x  = tf.placeholder(tf.float32, [par['batch_size'], par['layer_dims'][0]], 'stim')
-    elif par['task'] == 'cifar':
+    elif par['task'] == 'cifar' or par['task'] == 'imagenet':
         x  = tf.placeholder(tf.float32, [par['batch_size'], 32, 32, 3], 'stim')
     y   = tf.placeholder(tf.float32, [par['batch_size'], par['layer_dims'][-1]], 'out')
     mask   = tf.placeholder(tf.float32, [par['batch_size'], par['layer_dims'][-1]], 'mask')
