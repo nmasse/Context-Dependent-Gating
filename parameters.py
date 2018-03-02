@@ -21,6 +21,7 @@ par = {
     'task'                  : 'mnist',
     'save_analysis'         : True,
     'train_convolutional_layers' : False,
+    'reset_weights'         : False, # reset weights between tasks
 
     # Task specs
     'n_tasks'               : 100,
@@ -60,7 +61,6 @@ def gen_gating():
     """
     Generate the gating signal to applied to all hidden units
     """
-
     par['gating'] = []
     for t in range(par['n_tasks']):
         gating_task = []
@@ -94,7 +94,10 @@ def update_dependencies():
     """
 
     par['n_layers'] = len(par['layer_dims'])
-    par['max_layer_dim'] = np.max(par['layer_dims'][1:-1])
+    if par['task'] == 'mnist' or par['task'] == 'imagenet':
+        par['labels_per_task'] = 10
+    elif par['task'] == 'cifar':
+        par['labels_per_task'] = 5
     gen_gating()
 
 
