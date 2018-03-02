@@ -99,15 +99,15 @@ class Model:
     def optimize(self):
 
         # Use all trainable variables, except those in the convolutional layers
-        variables = [var for var in tf.trainable_variables() if not var.op.name.find('conv')==0]
-        adam_optimizer = AdamOpt.AdamOpt(variables, learning_rate = par['learning_rate'])
+        self.variables = [var for var in tf.trainable_variables() if not var.op.name.find('conv')==0]
+        adam_optimizer = AdamOpt.AdamOpt(self.variables, learning_rate = par['learning_rate'])
 
         previous_weights_mu_minus_1 = {}
         reset_prev_vars_ops = []
         self.big_omega_var = {}
         aux_losses = []
 
-        for var in variables:
+        for var in self.variables:
             self.big_omega_var[var.op.name] = tf.Variable(tf.zeros(var.get_shape()), trainable=False)
             previous_weights_mu_minus_1[var.op.name] = tf.Variable(tf.zeros(var.get_shape()), trainable=False)
             aux_losses.append(par['omega_c']*tf.reduce_sum(tf.multiply(self.big_omega_var[var.op.name], \
@@ -125,11 +125,11 @@ class Model:
 
         if par['stabilization'] == 'pathint':
             # Zenke method
-            self.pathint_stabilization(variables, adam_optimizer, previous_weights_mu_minus_1)
+            self.pathint_stabilization(adam_optimizer, previous_weights_mu_minus_1)
 
         elif par['stabilization'] == 'EWC':
             # Kirkpatrick method
-            self.EWC(variables)
+            self.EWC()
 
         self.reset_prev_vars = tf.group(*reset_prev_vars_ops)
         self.reset_adam_op = adam_optimizer.reset_params()
@@ -137,7 +137,26 @@ class Model:
         correct_prediction = tf.equal(tf.argmax(self.y - (1-self.mask)*9999,1), tf.argmax(self.target_data - (1-self.mask)*9999,1))
         self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
-    def EWC(self, variables):
+        self.reset_weights()
+
+    def reset_weights(self):
+
+        reset_weights = []
+
+        for var in self.variables:
+            if 'b' in var.op.name:
+                # reset biases to 0
+                reset_weights.append(tf.assign(var, var*0.))
+            elif 'W' in var.op.name:
+                # reset weights to uniform randomly distributed
+                layer = int(var.op.name[5])
+                new_weight = tf.random_uniform([par['layer_dims'][layer],par['layer_dims'][layer+1]], \
+                    -1.0/np.sqrt(par['layer_dims'][layer]), 1.0/np.sqrt(par['layer_dims'][layer]))
+                reset_weights.append(tf.assign(var,new_weight))
+
+        self.reset_weights = tf.group(*reset_weights)
+
+    def EWC(self):
 
         # Kirkpatrick method
         epsilon = 1e-5
@@ -160,7 +179,7 @@ class Model:
 
         self.update_big_omega = tf.group(*fisher_ops)
 
-    def pathint_stabilization(self, variables, adam_optimizer, previous_weights_mu_minus_1):
+    def pathint_stabilization(self, adam_optimizer, previous_weights_mu_minus_1):
         # Zenke method
 
         optimizer_task = tf.train.GradientDescentOptimizer(learning_rate =  1.0)
@@ -171,7 +190,7 @@ class Model:
         update_big_omega_ops = []
         initialize_prev_weights_ops = []
 
-        for var in variables:
+        for var in self.variables:
 
             small_omega_var[var.op.name] = tf.Variable(tf.zeros(var.get_shape()), trainable=False)
             reset_small_omega_ops.append( tf.assign( small_omega_var[var.op.name], small_omega_var[var.op.name]*0.0 ) )
@@ -221,7 +240,7 @@ def main(save_fn, gpu_id = None):
     input_droput_keep_pct = tf.placeholder(tf.float32, [], 'input_dropout')
     gating = [tf.placeholder(tf.float32, [par['layer_dims'][n+1]], 'gating') for n in range(par['n_layers']-1)]
 
-    stim = stimulus.Stimulus()
+    stim = stimulus.Stimulus(labels_per_task = par['labels_per_task'])
     accuracy_full = []
     accuracy_grid = np.zeros((par['n_tasks'], par['n_tasks']))
 
@@ -289,6 +308,11 @@ def main(save_fn, gpu_id = None):
 
             print('Task ',task, ' Mean ', np.mean(accuracy), ' First ', accuracy[0], ' Last ', accuracy[-1])
             accuracy_full.append(np.mean(accuracy))
+
+            # reset weights between tasks if called upon
+            if par['reset_weights']:
+                sess.run(model.reset_weights)
+
 
         if par['save_analysis']:
             save_results = {'task': task, 'accuracy': accuracy, 'accuracy_full': accuracy_full, \
