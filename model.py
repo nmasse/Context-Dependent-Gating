@@ -161,12 +161,13 @@ class Model:
         # Kirkpatrick method
         epsilon = 1e-5
         fisher_ops = []
-        opt = tf.train.GradientDescentOptimizer(1)
+        opt = tf.train.GradientDescentOptimizer(1.)
 
+        # sample label from logits
+        class_ind = tf.multinomial(self.y, 1)
         # model results p(y|x, theta)
         p_theta = tf.nn.softmax(self.y, dim = 1)
-        # sample label from p(y|x, theta)
-        class_ind = tf.multinomial(p_theta, 1)
+
         class_ind_one_hot = tf.reshape(tf.one_hot(class_ind, par['layer_dims'][-1]), \
             [par['batch_size'], par['layer_dims'][-1]])
         # calculate the gradient of log p(y|x, theta)
