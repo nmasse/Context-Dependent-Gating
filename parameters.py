@@ -17,7 +17,7 @@ par = {
     'save_dir'              : './savedir/',
     'loss_function'         : 'cross_entropy',    # cross_entropy or MSE
     'stabilization'         : 'pathint', # 'EWC' (Kirkpatrick method) or 'pathint' (Zenke method)
-    'learning_rate'         : 0.001,
+    'learning_rate'         : 0.004,
     'task'                  : 'mnist',
     'save_analysis'         : True,
     'train_convolutional_layers' : False,
@@ -31,6 +31,7 @@ par = {
     'gate_pct'              : 0.0, # percentage of hidden units to gate. Only used when gating_type is set to XdG
     'n_subnetworks'         : 5, # Only used when gating_type is set to split
     'multihead'             : False, # option for CIFAR task, in which different unique output units are asscoaited with each label
+    'gate_cost'             : np.array([1.,0.1]),
 
     # Dropout
     'drop_keep_pct'         : 0.5,
@@ -46,7 +47,7 @@ par = {
     'omega_c'               : 0.1,
     'omega_xi'              : 0.01,
 
-    'EWC_fisher_num_batches': 32, # number of batches size when calculating EWC
+    'EWC_fisher_num_batches': 16, # was 16, number of batches size when calculating EWC
 
     # Type of gating signal
     'gating_type'           : None, # can be either 'XdG', 'partial', 'split' or None
