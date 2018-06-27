@@ -223,6 +223,11 @@ def main(save_fn, gpu_id = None):
     if (par['task'] == 'cifar' or par['task'] == 'imagenet') and par['train_convolutional_layers']:
         convolutional_layers.ConvolutionalLayers()
 
+    # If including rule cue, expand 0th layer size
+    if par['include_rule_signal']:
+        par['layer_dims'][0] += par['n_tasks']
+        update_dependencies()
+
     print('\nRunning model.\n')
 
     # Reset TensorFlow graph
@@ -261,11 +266,15 @@ def main(save_fn, gpu_id = None):
 
             # create dictionary of gating signals applied to each hidden layer for this task
             gating_dict = {k:v for k,v in zip(gating, par['gating'][task])}
+            rule_cue = np.zeros([par['batch_size'], par['n_tasks']])
+            rule_cue[:,task] = 1
 
             for i in range(par['n_train_batches']):
 
                 # make batch of training data
                 stim_in, y_hat, mk = stim.make_batch(task, test = False)
+                if par['include_rule_signal']:
+                    stim_in = np.concatenate([stim_in, rule_cue], axis=1)
 
                 if par['stabilization'] == 'pathint':
 

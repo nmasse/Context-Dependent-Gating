@@ -158,6 +158,30 @@ def run_base():
         save_fn = 'imagenet_baseMH_v' + str(i) + '.pkl'
         try_model(save_fn, gpu_id)
 
+def run_with_rule():
+
+    omegas = [0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0]
+
+    update_parameters(mnist_updates)
+    update_parameters({'gating_type':None, 'gate_pct':0.80, 'input_drop_keep_pct':1.0, \
+        'stabilization':'pathint', 'omega_xi':0.01, 'include_rule_signal':True})
+
+    for i in range(5):
+        for j in range(len(omegas)):
+            update_parameters({'omega_c':omegas[j]})
+            save_fn = 'mnist_SI_rulecue_nogate_omega'+str(j)+'_v'+str(i)+'.pkl'
+            try_model(save_fn, gpu_id)
+
+    update_parameters({'stabilization':'EWC'})
+
+    for i in range(5):
+        for j in range(len(omegas)):
+            update_parameters({'omega_c':omegas[j]})
+            save_fn = 'mnist_EWC_rulecue_nogate_omega'+str(j)+'_v'+str(i)+'.pkl'
+            try_model(save_fn, gpu_id)
+
+
+
 def run_SI():
 
     omegas = [0.2, 0.5, 1, 2, 5]
@@ -303,7 +327,7 @@ except:
 #recurse_best('/home/masse/Context-Dependent-Gating/savedir/ImageNet/', 'imagenet_SI_XdG')
 
 #run_EWC()
-run_base()
+#run_base()
 #run_SI()
 #run_split_EWC()
 #run_split_SI()
@@ -311,6 +335,7 @@ run_base()
 #run_XdG_SI()
 #run_partial_EWC()
 #run_XdG_EWC()
+run_with_rule()
 
 quit()
 

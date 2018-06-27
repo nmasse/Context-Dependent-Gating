@@ -32,6 +32,7 @@ par = {
     'n_subnetworks'         : 5, # Only used when gating_type is set to split
     'multihead'             : False, # option for CIFAR task, in which different unique output units are asscoaited with each label
     'gate_cost'             : np.array([1.,0.1]),
+    'include_rule_signal'   : False,
 
     # Dropout
     'drop_keep_pct'         : 0.5,
@@ -100,6 +101,9 @@ def update_dependencies():
     elif par['task'] == 'cifar':
         par['labels_per_task'] = 5
     gen_gating()
+
+    if par['include_rule_signal'] and par['task'] == 'cifar':
+        raise Exception('Rule signal inclusion not implemented for CIFAR tasks.')
 
 
 def update_parameters(updates):
