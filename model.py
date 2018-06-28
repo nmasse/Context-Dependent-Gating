@@ -225,7 +225,7 @@ def main(save_fn, gpu_id = None):
 
     # If including rule cue, expand 0th layer size
     if par['include_rule_signal']:
-        par['layer_dims'][0] += par['n_tasks']
+        par['layer_dims'][0] = par['mnist_dim'] par['n_tasks']
         update_dependencies()
 
     print('\nRunning model.\n')
