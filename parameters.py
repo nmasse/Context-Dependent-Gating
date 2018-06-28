@@ -27,6 +27,7 @@ par = {
     'n_tasks'               : 100,
 
     'layer_dims'            : [28**2, 2000, 2000, 10], # mnist
+    'mnist_dim'             : 28**2,
     #'layer_dims'            : [4096, 1000, 1000, 5], #cifar
     'gate_pct'              : 0.0, # percentage of hidden units to gate. Only used when gating_type is set to XdG
     'n_subnetworks'         : 5, # Only used when gating_type is set to split
