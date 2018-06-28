@@ -225,7 +225,7 @@ def main(save_fn, gpu_id = None):
 
     # If including rule cue, expand 0th layer size
     if par['include_rule_signal']:
-        par['layer_dims'][0] = par['mnist_dim'] par['n_tasks']
+        par['layer_dims'][0] = par['mnist_dim'] + par['n_tasks']
         update_dependencies()
 
     print('\nRunning model.\n')
@@ -295,6 +295,8 @@ def main(save_fn, gpu_id = None):
             elif par['stabilization'] == 'EWC':
                 for n in range(par['EWC_fisher_num_batches']):
                     stim_in, y_hat, mk = stim.make_batch(task, test = False)
+                    if par['include_rule_signal']:
+                        stim_in = np.concatenate([stim_in, rule_cue], axis=1)
                     big_omegas = sess.run([model.update_big_omega,model.big_omega_var], feed_dict = \
                         {x:stim_in, y:y_hat, **gating_dict, mask:mk, droput_keep_pct:1.0, input_droput_keep_pct:1.0})
 
@@ -311,6 +313,8 @@ def main(save_fn, gpu_id = None):
                 gating_dict = {k:v for k,v in zip(gating, par['gating'][test_task])}
                 for r in range(num_test_reps):
                     stim_in, y_hat, mk = stim.make_batch(test_task, test = True)
+                    if par['include_rule_signal']:
+                        stim_in = np.concatenate([stim_in, rule_cue], axis=1)
                     acc = sess.run(model.accuracy, feed_dict={x:stim_in, y:y_hat, \
                         **gating_dict, mask:mk, droput_keep_pct:1.0, input_droput_keep_pct:1.0})/num_test_reps
                     accuracy_grid[task, test_task]  += acc
