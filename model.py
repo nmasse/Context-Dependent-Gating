@@ -20,7 +20,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 ###################
 class Model:
 
-    def __init__(self, input_data, target_data, gating, mask, droput_keep_pct, input_droput_keep_pct):
+    def __init__(self, input_data, target_data, gating, mask, droput_keep_pct, input_droput_keep_pct, rule):
 
         # Load the input activity, the target data, and the training mask
         # for this batch of trials
@@ -30,6 +30,7 @@ class Model:
         self.droput_keep_pct    = droput_keep_pct
         self.input_droput_keep_pct  = input_droput_keep_pct
         self.mask               = mask
+        self.rule = rule
 
         # Build the TensorFlow graph
         self.run_model()
@@ -59,7 +60,15 @@ class Model:
                 b = tf.get_variable('b', initializer = tf.zeros([1,par['layer_dims'][n+1]]), trainable = True if n<par['n_layers']-2 else False)
 
                 if n < par['n_layers']-2:
-                    self.x = tf.nn.dropout(tf.nn.relu(tf.matmul(self.x,W) + b), self.droput_keep_pct)
+
+                    if par['include_rule_signal']:
+                        Wr = tf.get_variable('Wr', initializer = tf.random_uniform([par['n_tasks'], par['layer_dims'][n+1]], \
+                        -1.0/np.sqrt(par['n_tasks']), 1.0/np.sqrt(par['n_tasks'])), trainable = True)
+                        r = tf.matmul(self.rule, Wr)
+                    else:
+                        r = tf.constant(0.)
+
+                    self.x = tf.nn.dropout(tf.nn.relu(tf.matmul(self.x,W) + r + b), self.droput_keep_pct)
                     self.x = self.x*tf.tile(tf.reshape(self.gating[n],[1,par['layer_dims'][n+1]]),[par['batch_size'],1])
 
                 else:
@@ -147,6 +156,13 @@ class Model:
             if 'b' in var.op.name:
                 # reset biases to 0
                 reset_weights.append(tf.assign(var, var*0.))
+            elif 'Wr' in var.op.name:
+                # reset rule weights to uniform randomly distributed
+                # (albeit with different shapes than standard weights)
+                layer = int(var.op.name[5])
+                new_weight = tf.random_uniform([par['n_tasks'],par['layer_dims'][layer+1]], \
+                    -1.0/np.sqrt(par['n_tasks']), 1.0/np.sqrt(par['n_tasks']))
+                reset_weights.append(tf.assign(var,new_weight))
             elif 'W' in var.op.name:
                 # reset weights to uniform randomly distributed
                 layer = int(var.op.name[5])
@@ -224,9 +240,6 @@ def main(save_fn, gpu_id = None):
         convolutional_layers.ConvolutionalLayers()
 
     # If including rule cue, expand 0th layer size
-    if par['include_rule_signal']:
-        par['layer_dims'][0] = par['mnist_dim'] + par['n_tasks']
-        update_dependencies()
 
     print('\nRunning model.\n')
 
@@ -245,6 +258,7 @@ def main(save_fn, gpu_id = None):
     droput_keep_pct = tf.placeholder(tf.float32, [], 'dropout')
     input_droput_keep_pct = tf.placeholder(tf.float32, [], 'input_dropout')
     gating = [tf.placeholder(tf.float32, [par['layer_dims'][n+1]], 'gating') for n in range(par['n_layers']-1)]
+    rule = tf.placeholder(tf.float32, [par['batch_size'], par['n_tasks']], 'rulecue')
 
     stim = stimulus.Stimulus(labels_per_task = par['labels_per_task'])
     accuracy_full = []
@@ -253,10 +267,10 @@ def main(save_fn, gpu_id = None):
     with tf.Session() as sess:
 
         if gpu_id is None:
-            model = Model(x, y, gating, mask, droput_keep_pct, input_droput_keep_pct)
+            model = Model(x, y, gating, mask, droput_keep_pct, input_droput_keep_pct, rule)
         else:
             with tf.device("/gpu:0"):
-                model = Model(x, y, gating, mask, droput_keep_pct, input_droput_keep_pct)
+                model = Model(x, y, gating, mask, droput_keep_pct, input_droput_keep_pct, rule)
         init = tf.global_variables_initializer()
         sess.run(init)
         t_start = time.time()
@@ -273,18 +287,17 @@ def main(save_fn, gpu_id = None):
 
                 # make batch of training data
                 stim_in, y_hat, mk = stim.make_batch(task, test = False)
-                if par['include_rule_signal']:
-                    stim_in = np.concatenate([stim_in, rule_cue], axis=1)
 
                 if par['stabilization'] == 'pathint':
 
                     _, _, loss, AL = sess.run([model.train_op, model.update_small_omega, model.task_loss, model.aux_loss], \
                         feed_dict = {x:stim_in, y:y_hat, **gating_dict, mask:mk, droput_keep_pct:par['drop_keep_pct'], \
-                        input_droput_keep_pct:par['input_drop_keep_pct']})
+                        input_droput_keep_pct:par['input_drop_keep_pct'], rule:rule_cue})
 
                 elif par['stabilization'] == 'EWC':
                     _,loss,AL = sess.run([model.train_op, model.task_loss, model.aux_loss], feed_dict = \
-                        {x:stim_in, y:y_hat, **gating_dict, mask:mk, droput_keep_pct:par['drop_keep_pct'], input_droput_keep_pct:par['input_drop_keep_pct']})
+                        {x:stim_in, y:y_hat, **gating_dict, mask:mk, droput_keep_pct:par['drop_keep_pct'], \
+                        input_droput_keep_pct:par['input_drop_keep_pct'], rule:rule_cue})
 
                 if i//500 == i/500:
                     print('Iter: ', i, 'Loss: ', loss, 'Aux Loss: ',  AL)
@@ -316,7 +329,7 @@ def main(save_fn, gpu_id = None):
                     if par['include_rule_signal']:
                         stim_in = np.concatenate([stim_in, rule_cue], axis=1)
                     acc = sess.run(model.accuracy, feed_dict={x:stim_in, y:y_hat, \
-                        **gating_dict, mask:mk, droput_keep_pct:1.0, input_droput_keep_pct:1.0})/num_test_reps
+                        **gating_dict, mask:mk, droput_keep_pct:1.0, input_droput_keep_pct:1.0, rule:rule_cue})/num_test_reps
                     accuracy_grid[task, test_task]  += acc
                     accuracy[test_task] += acc
 
