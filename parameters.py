@@ -47,7 +47,7 @@ par = {
     'omega_c'               : 0.1,
     'omega_xi'              : 0.01,
 
-    'EWC_fisher_num_batches': 16, # was 16, number of batches size when calculating EWC
+    'EWC_fisher_num_batches': 32, # was 16, number of batches size when calculating EWC
 
     # Type of gating signal
     'gating_type'           : None, # can be either 'XdG', 'partial', 'split' or None
@@ -73,10 +73,7 @@ def gen_gating():
                         gating_layer[i] = 1
                 elif par['gating_type'] == 'split':
                     if t%par['n_subnetworks'] == i%par['n_subnetworks']:
-                        if np.random.rand() < 0.5:
-                            gating_layer[i] = 0.5
-                        else:
-                            gating_layer[i] = 1
+                        gating_layer[i] = 1
                 elif par['gating_type'] == 'partial':
                     if np.random.rand() < 0.5:
                         gating_layer[i] = 0.5
