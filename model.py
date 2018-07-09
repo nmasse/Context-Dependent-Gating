@@ -188,22 +188,18 @@ class Model:
 
         grad_dict = {}
         for var in self.variables_stabilization:
-            grad_dict[var.op.name] = tf.constant(0.)
+            grad_dict[var.op.name] = tf.zeros_like(var)
 
-        for i in range(par['batch_size']):
+        # Note:  par['batch_size']//2 should not be greater than ~150
+        #        If this limit is reached, divide by a larger number and run
+        #        more EWC batches to maintain both GPU memory and network
+        #        performance
+        for i in range(par['batch_size']//2):
             for grad, var in opt.compute_gradients(log_p_theta[i], var_list = self.variables_stabilization):
                 grad_dict[var.op.name] += tf.square(grad)/par['batch_size']/par['EWC_fisher_num_batches']
 
         for var in self.variables_stabilization:
             fisher_ops.append(tf.assign_add(self.big_omega_var[var.op.name], grad_dict[var.op.name]))
-
-        """
-        for i in range(par['batch_size']):
-            for grad, var in opt.compute_gradients(log_p_theta[i]):
-                if not var.op.name == 'Wr': # don't worry about rule weights
-                    fisher_ops.append(tf.assign_add(self.big_omega_var[var.op.name], \
-                        tf.square(grad)/par['batch_size']/par['EWC_fisher_num_batches']))
-                        """
 
         self.update_big_omega = tf.group(*fisher_ops)
 
@@ -241,6 +237,7 @@ class Model:
                 update_small_omega_ops.append(tf.assign_add(small_omega_var[var.op.name], -self.delta_grads[var.op.name]*grad ) )
             self.update_small_omega = tf.group(*update_small_omega_ops) # 1) update small_omega after each train!
 
+
 def main(save_fn, gpu_id = None):
 
     if gpu_id is not None:
@@ -251,31 +248,32 @@ def main(save_fn, gpu_id = None):
     if (par['task'] == 'cifar' or par['task'] == 'imagenet') and par['train_convolutional_layers']:
         convolutional_layers.ConvolutionalLayers()
 
-    # If including rule cue, expand 0th layer size
-
     print('\nRunning model.\n')
 
     # Reset TensorFlow graph
     tf.reset_default_graph()
 
     # Create placeholders for the model
-    # input_data, target_data, gating, mask, dropout keep pct hidden layers, dropout keep pct input layers
-
     if par['task'] == 'mnist':
-        x  = tf.placeholder(tf.float32, [par['batch_size'], par['layer_dims'][0]], 'stim')
+        x   = tf.placeholder(tf.float32, [par['batch_size'], par['layer_dims'][0]], 'stim')
     elif par['task'] == 'cifar' or par['task'] == 'imagenet':
-        x  = tf.placeholder(tf.float32, [par['batch_size'], 32, 32, 3], 'stim')
-    y   = tf.placeholder(tf.float32, [par['batch_size'], par['layer_dims'][-1]], 'out')
-    mask   = tf.placeholder(tf.float32, [par['batch_size'], par['layer_dims'][-1]], 'mask')
-    droput_keep_pct = tf.placeholder(tf.float32, [], 'dropout')
-    input_droput_keep_pct = tf.placeholder(tf.float32, [], 'input_dropout')
-    gating = [tf.placeholder(tf.float32, [par['layer_dims'][n+1]], 'gating') for n in range(par['n_layers']-1)]
-    rule = tf.placeholder(tf.float32, [par['batch_size'], par['n_tasks']], 'rulecue')
+        x   = tf.placeholder(tf.float32, [par['batch_size'], 32, 32, 3], 'stim')
 
-    stim = stimulus.Stimulus(labels_per_task = par['labels_per_task'])
+    y       = tf.placeholder(tf.float32, [par['batch_size'], par['layer_dims'][-1]], 'out')
+    mask    = tf.placeholder(tf.float32, [par['batch_size'], par['layer_dims'][-1]], 'mask')
+    droput_keep_pct         = tf.placeholder(tf.float32, [], 'dropout')
+    input_droput_keep_pct   = tf.placeholder(tf.float32, [], 'input_dropout')
+    gating  = [tf.placeholder(tf.float32, [par['layer_dims'][n+1]], 'gating') for n in range(par['n_layers']-1)]
+    rule    = tf.placeholder(tf.float32, [par['batch_size'], par['n_tasks']], 'rulecue')
+
+    # Set up stimulus
+    stim    = stimulus.Stimulus(labels_per_task = par['labels_per_task'])
+
+    # Initialize accuracy records
     accuracy_full = []
     accuracy_grid = np.zeros((par['n_tasks'], par['n_tasks']))
 
+    # Enter TensorFlow session
     with tf.Session() as sess:
 
         if gpu_id is None:
@@ -283,6 +281,7 @@ def main(save_fn, gpu_id = None):
         else:
             with tf.device("/gpu:0"):
                 model = Model(x, y, gating, mask, droput_keep_pct, input_droput_keep_pct, rule)
+
         init = tf.global_variables_initializer()
         sess.run(init)
         t_start = time.time()
@@ -301,7 +300,6 @@ def main(save_fn, gpu_id = None):
                 stim_in, y_hat, mk = stim.make_batch(task, test = False)
 
                 if par['stabilization'] == 'pathint':
-
                     _, _, loss, AL = sess.run([model.train_op, model.update_small_omega, model.task_loss, model.aux_loss], \
                         feed_dict = {x:stim_in, y:y_hat, **gating_dict, mask:mk, droput_keep_pct:par['drop_keep_pct'], \
                         input_droput_keep_pct:par['input_drop_keep_pct'], rule:rule_cue})
@@ -314,20 +312,18 @@ def main(save_fn, gpu_id = None):
                 if i//500 == i/500:
                     print('Iter: ', i, 'Loss: ', loss, 'Aux Loss: ',  AL)
 
-            print('FLAG 1')
-
             # Update big omegaes, and reset other values before starting new task
             if par['stabilization'] == 'pathint':
                 _, big_omegas = sess.run([model.update_big_omega, model.big_omega_var])
             elif par['stabilization'] == 'EWC':
-                print('FLAG 2')
-                for asdf in range(par['EWC_fisher_num_batches']):
-                    print('FLAG 3a : {}'.format(asdf))
+                # Note the 2x multiplier -- check EWC function in model to verify
+                # that precisely par['EWC_fisher_num_batches'] are being run once
+                # this loop is complete.  This is to preserve both GPU memory
+                # and network performance.
+                for _ in range(2*par['EWC_fisher_num_batches']):
                     stim_in, _, mk = stim.make_batch(task, test = False)
-                    print('FLAG 3b : {}'.format(asdf))
                     sess.run([model.update_big_omega], feed_dict = \
                         {x:stim_in, **gating_dict, mask:mk, droput_keep_pct:1.0, input_droput_keep_pct:1.0, rule:rule_cue})
-            print('FLAG 4')
 
             # Reset the Adam Optimizer, and set the previous parater values to their current values
             sess.run(model.reset_adam_op)
@@ -335,18 +331,14 @@ def main(save_fn, gpu_id = None):
             if par['stabilization'] == 'pathint':
                 sess.run(model.reset_small_omega)
 
-            print('FLAG 5')
-
             # Test the netwroks on all trained tasks
             num_test_reps = 10
             accuracy = np.zeros((task+1))
             for test_task in range(task+1):
-                print('FLAG 6a : {}'.format(test_task))
                 gating_dict = {k:v for k,v in zip(gating, par['gating'][test_task])}
                 test_rule_cue = np.zeros([par['batch_size'], par['n_tasks']])
                 test_rule_cue[:,test_task] = 1
                 for r in range(num_test_reps):
-                    print('FLAG 6b : {}, {}'.format(test_task, r))
                     stim_in, y_hat, mk = stim.make_batch(test_task, test = True)
                     acc = sess.run(model.accuracy, feed_dict={x:stim_in, y:y_hat, \
                         **gating_dict, mask:mk, droput_keep_pct:1.0, input_droput_keep_pct:1.0, rule:test_rule_cue})/num_test_reps
