@@ -77,7 +77,7 @@ class Model:
 
     def apply_convulational_layers(self):
 
-        conv_weights = pickle.load(open(par['save_dir'] + par['task'] + '_conv_weights.pkl','rb'))
+        conv_weights = pickle.load(open('./savedir/' + 'conv_weights.pkl','rb'))
         #conv_weights = pickle.load(open(par['save_dir'] + 'cifarconv_weights.pkl','rb'))
 
         conv1 = tf.layers.conv2d(inputs=self.input_data,filters=32, kernel_size=[3, 3], kernel_initializer = \
@@ -108,7 +108,9 @@ class Model:
     def optimize(self):
 
         # Use all trainable variables, except those in the convolutional layers
-        self.variables = [var for var in tf.trainable_variables() if not var.op.name.find('conv')==0]
+        self.variables = [var for var in tf.trainable_variables() if not 'conv' in var.op.name]
+        # Use all trainable variables for synaptic stabilization, except conv and rule weights
+        self.variables_stabilization = [var for var in tf.trainable_variables() if not ('conv' in var.op.name or 'Wr' in var.op.name)]
         adam_optimizer = AdamOpt.AdamOpt(self.variables, learning_rate = par['learning_rate'])
 
         previous_weights_mu_minus_1 = {}
@@ -116,7 +118,7 @@ class Model:
         self.big_omega_var = {}
         aux_losses = []
 
-        for var in self.variables:
+        for var in self.variables_stabilization:
             self.big_omega_var[var.op.name] = tf.Variable(tf.zeros(var.get_shape()), trainable=False)
             previous_weights_mu_minus_1[var.op.name] = tf.Variable(tf.zeros(var.get_shape()), trainable=False)
             aux_losses.append(par['omega_c']*tf.reduce_sum(tf.multiply(self.big_omega_var[var.op.name], \
@@ -175,26 +177,36 @@ class Model:
     def EWC(self):
 
         # Kirkpatrick method
-        epsilon = 1e-5
+        epsilon = 1e-16
         fisher_ops = []
         opt = tf.train.GradientDescentOptimizer(1.)
 
-        # sample label from logits
-        class_ind = tf.multinomial(self.y, 1)
-        # model results p(y|x, theta)
         p_theta = tf.nn.softmax(self.y, dim = 1)
-
-        class_ind_one_hot = tf.reshape(tf.one_hot(class_ind, par['layer_dims'][-1]), \
-            [par['batch_size'], par['layer_dims'][-1]])
-        # calculate the gradient of log p(y|x, theta)
+        # sample label from logits
+        class_ind_one_hot = tf.cast(tf.squeeze(tf.one_hot(tf.multinomial(self.y, 1), par['layer_dims'][-1])), tf.float32)
         log_p_theta = tf.unstack(class_ind_one_hot*tf.log(p_theta + epsilon), axis = 0)
-        for lp in log_p_theta:
-            grads_and_vars = opt.compute_gradients(lp)
-            for grad, var in grads_and_vars:
-                fisher_ops.append(tf.assign_add(self.big_omega_var[var.op.name], \
-                    grad*grad/par['batch_size']/par['EWC_fisher_num_batches']))
+
+        grad_dict = {}
+        for var in self.variables_stabilization:
+            grad_dict[var.op.name] = tf.constant(0.)
+
+        for i in range(par['batch_size']):
+            for grad, var in opt.compute_gradients(log_p_theta[i], var_list = self.variables_stabilization):
+                grad_dict[var.op.name] += tf.square(grad)/par['batch_size']/par['EWC_fisher_num_batches']
+
+        for var in self.variables_stabilization:
+            fisher_ops.append(tf.assign_add(self.big_omega_var[var.op.name], grad_dict[var.op.name]))
+
+        """
+        for i in range(par['batch_size']):
+            for grad, var in opt.compute_gradients(log_p_theta[i]):
+                if not var.op.name == 'Wr': # don't worry about rule weights
+                    fisher_ops.append(tf.assign_add(self.big_omega_var[var.op.name], \
+                        tf.square(grad)/par['batch_size']/par['EWC_fisher_num_batches']))
+                        """
 
         self.update_big_omega = tf.group(*fisher_ops)
+
 
     def pathint_stabilization(self, adam_optimizer, previous_weights_mu_minus_1):
         # Zenke method
@@ -207,7 +219,7 @@ class Model:
         update_big_omega_ops = []
         initialize_prev_weights_ops = []
 
-        for var in self.variables:
+        for var in self.variables_stabilization:
 
             small_omega_var[var.op.name] = tf.Variable(tf.zeros(var.get_shape()), trainable=False)
             reset_small_omega_ops.append( tf.assign( small_omega_var[var.op.name], small_omega_var[var.op.name]*0.0 ) )
@@ -302,14 +314,20 @@ def main(save_fn, gpu_id = None):
                 if i//500 == i/500:
                     print('Iter: ', i, 'Loss: ', loss, 'Aux Loss: ',  AL)
 
+            print('FLAG 1')
+
             # Update big omegaes, and reset other values before starting new task
             if par['stabilization'] == 'pathint':
-                big_omegas = sess.run([model.update_big_omega, model.big_omega_var])
+                _, big_omegas = sess.run([model.update_big_omega, model.big_omega_var])
             elif par['stabilization'] == 'EWC':
-                for n in range(par['EWC_fisher_num_batches']):
-                    stim_in, y_hat, mk = stim.make_batch(task, test = False)
-                    big_omegas = sess.run([model.update_big_omega,model.big_omega_var], feed_dict = \
-                        {x:stim_in, y:y_hat, **gating_dict, mask:mk, droput_keep_pct:1.0, input_droput_keep_pct:1.0, rule:rule_cue})
+                print('FLAG 2')
+                for asdf in range(par['EWC_fisher_num_batches']):
+                    print('FLAG 3a : {}'.format(asdf))
+                    stim_in, _, mk = stim.make_batch(task, test = False)
+                    print('FLAG 3b : {}'.format(asdf))
+                    sess.run([model.update_big_omega], feed_dict = \
+                        {x:stim_in, **gating_dict, mask:mk, droput_keep_pct:1.0, input_droput_keep_pct:1.0, rule:rule_cue})
+            print('FLAG 4')
 
             # Reset the Adam Optimizer, and set the previous parater values to their current values
             sess.run(model.reset_adam_op)
@@ -317,14 +335,18 @@ def main(save_fn, gpu_id = None):
             if par['stabilization'] == 'pathint':
                 sess.run(model.reset_small_omega)
 
+            print('FLAG 5')
+
             # Test the netwroks on all trained tasks
             num_test_reps = 10
             accuracy = np.zeros((task+1))
             for test_task in range(task+1):
+                print('FLAG 6a : {}'.format(test_task))
                 gating_dict = {k:v for k,v in zip(gating, par['gating'][test_task])}
                 test_rule_cue = np.zeros([par['batch_size'], par['n_tasks']])
                 test_rule_cue[:,test_task] = 1
                 for r in range(num_test_reps):
+                    print('FLAG 6b : {}, {}'.format(test_task, r))
                     stim_in, y_hat, mk = stim.make_batch(test_task, test = True)
                     acc = sess.run(model.accuracy, feed_dict={x:stim_in, y:y_hat, \
                         **gating_dict, mask:mk, droput_keep_pct:1.0, input_droput_keep_pct:1.0, rule:test_rule_cue})/num_test_reps
@@ -341,7 +363,7 @@ def main(save_fn, gpu_id = None):
 
         if par['save_analysis']:
             save_results = {'task': task, 'accuracy': accuracy, 'accuracy_full': accuracy_full, \
-                            'accuracy_grid': accuracy_grid, 'big_omegas': big_omegas, 'par': par}
+                            'accuracy_grid': accuracy_grid, 'par': par}
             pickle.dump(save_results, open(par['save_dir'] + save_fn, 'wb'))
 
     print('\nModel execution complete.')

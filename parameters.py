@@ -17,7 +17,7 @@ par = {
     'save_dir'              : './savedir/',
     'loss_function'         : 'cross_entropy',    # cross_entropy or MSE
     'stabilization'         : 'pathint', # 'EWC' (Kirkpatrick method) or 'pathint' (Zenke method)
-    'learning_rate'         : 0.004,
+    'learning_rate'         : 0.001,
     'task'                  : 'mnist',
     'save_analysis'         : True,
     'train_convolutional_layers' : False,
@@ -27,12 +27,10 @@ par = {
     'n_tasks'               : 100,
 
     'layer_dims'            : [28**2, 2000, 2000, 10], # mnist
-    'mnist_dim'             : 28**2,
     #'layer_dims'            : [4096, 1000, 1000, 5], #cifar
     'gate_pct'              : 0.0, # percentage of hidden units to gate. Only used when gating_type is set to XdG
     'n_subnetworks'         : 5, # Only used when gating_type is set to split
     'multihead'             : False, # option for CIFAR task, in which different unique output units are asscoaited with each label
-    'gate_cost'             : np.array([1.,0.1]),
     'include_rule_signal'   : False,
 
     # Dropout
@@ -88,7 +86,6 @@ def gen_gating():
                     gating_layer[i] = 1
             gating_task.append(gating_layer)
         par['gating'].append(gating_task)
-
 
 
 def update_dependencies():
