@@ -119,7 +119,7 @@ class Stimulus:
         labels = np.reshape(np.array(x[b'fine_labels']),(-1,1))
 
         # Add the testing images and labels to arrays
-        self.test_images   np.vstack((self.test_images, x[b'data']))  if self.test_images.size else np.array(images)
+        self.test_images = np.vstack((self.test_images, x[b'data']))  if self.test_images.size else np.array(images)
         self.test_labels = np.vstack((self.test_labels, labels))  if self.test_labels.size else np.array(labels)
 
         if include_all:

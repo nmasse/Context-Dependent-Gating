@@ -1,7 +1,6 @@
 ### Authors: Nicolas Y. Masse, Gregory D. Grant
 
 import numpy as np
-import tensorflow as tf
 from itertools import product
 
 print("\n--> Loading parameters...")
@@ -14,22 +13,20 @@ global par
 
 par = {
     # General parameters
-    'save_dir'              : './savedir/',
-    'loss_function'         : 'cross_entropy',    # cross_entropy or MSE
-    'stabilization'         : 'pathint', # 'EWC' (Kirkpatrick method) or 'pathint' (Zenke method)
-    'learning_rate'         : 0.001,
-    'task'                  : 'mnist',
-    'save_analysis'         : True,
-    'train_convolutional_layers' : False,
-    'reset_weights'         : False, # reset weights between tasks
+    'save_dir'                      : './savedir/',
+    'stabilization'                 : 'pathint', # 'EWC' (Kirkpatrick method) or 'pathint' (Zenke method)
+    'learning_rate'                 : 0.001,
+    'task'                          : 'mnist',
+    'save_analysis'                 : True,
+    'train_convolutional_layers'    : False,
+    'reset_weights'                 : False, # Reset weights between tasks
 
     # Task specs
     'n_tasks'               : 100,
-
     'layer_dims'            : [28**2, 2000, 2000, 10], # mnist
     #'layer_dims'            : [4096, 1000, 1000, 5], #cifar
-    'gate_pct'              : 0.0, # percentage of hidden units to gate. Only used when gating_type is set to XdG
-    'n_subnetworks'         : 5, # Only used when gating_type is set to split
+    'gate_pct'              : 0.8,   # percentage of hidden units to gate. Only used when gating_type is set to XdG
+    'n_subnetworks'         : 5,     # only used when gating_type is set to split
     'multihead'             : False, # option for CIFAR task, in which different unique output units are asscoaited with each label
     'include_rule_signal'   : False,
 
@@ -40,18 +37,18 @@ par = {
 
     # Training specs
     'batch_size'            : 256,
-    'n_train_batches'       : 3906, # 3906*256 = 20 epochs * 50000
+    'n_train_batches'       : 3906, # MNIST: 3906*256 = 20 epochs * 50000
+                                    # ImageNet: 977*256, likewise
     'n_batches_top_down'    : 20000,
 
     # Omega parameters
-    'omega_c'               : 0.1,
+    'omega_c'               : 0.035,
     'omega_xi'              : 0.01,
-
     'EWC_fisher_num_batches': 32, # was 16, number of batches size when calculating EWC
 
     # Type of gating signal
-    'gating_type'           : None, # can be either 'XdG', 'partial', 'split' or None
-
+    'gating_type'           : 'XdG', # can be either 'XdG', 'partial', 'split' or None
+    'smart_XdG'             : False
 }
 
 ############################
@@ -97,9 +94,6 @@ def update_dependencies():
         par['labels_per_task'] = 5
     gen_gating()
 
-    if par['include_rule_signal'] and par['task'] == 'cifar':
-        raise Exception('Rule signal inclusion not implemented for CIFAR tasks.')
-
 
 def update_parameters(updates):
     """
@@ -108,7 +102,7 @@ def update_parameters(updates):
     """
     for (key, val) in updates.items():
         par[key] = val
-        print('Updating : ', key, ' -> ', val)
+        print('Updating:', key, '-->', val)
     update_dependencies()
 
 

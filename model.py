@@ -8,7 +8,6 @@ from parameters import *
 import os, time
 import pickle
 import convolutional_layers
-import matplotlib.pyplot as plt
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID" # so the IDs match nvidia-smi
 
@@ -30,7 +29,9 @@ class Model:
         self.droput_keep_pct    = droput_keep_pct
         self.input_droput_keep_pct  = input_droput_keep_pct
         self.mask               = mask
-        self.rule = rule
+        self.rule               = rule
+        self.conv_droput_keep_pct = (1+self.droput_keep_pct)/2
+        #self.conv_droput_keep_pct = 1.
 
         # Build the TensorFlow graph
         self.run_model()
@@ -77,7 +78,7 @@ class Model:
 
     def apply_convulational_layers(self):
 
-        conv_weights = pickle.load(open('./savedir/' + 'conv_weights.pkl','rb'))
+        conv_weights = pickle.load(open('./savedir/conv_weights.pkl','rb'))
         #conv_weights = pickle.load(open(par['save_dir'] + 'cifarconv_weights.pkl','rb'))
 
         conv1 = tf.layers.conv2d(inputs=self.input_data,filters=32, kernel_size=[3, 3], kernel_initializer = \
@@ -89,7 +90,8 @@ class Model:
             strides=1, activation=tf.nn.relu, padding = 'SAME', trainable=False)
 
         conv2 = tf.layers.max_pooling2d(inputs=conv2, pool_size=[2, 2], strides=2, padding='SAME')
-        conv2 = tf.nn.dropout(conv2, self.input_droput_keep_pct)
+        #conv2 = tf.nn.dropout(conv2, self.input_droput_keep_pct)
+        conv2 = tf.nn.dropout(conv2, self.conv_droput_keep_pct)
 
         conv3 = tf.layers.conv2d(inputs=conv2,filters=64, kernel_size=[3, 3], kernel_initializer = \
             tf.constant_initializer(conv_weights['conv2d_2/kernel']),  bias_initializer = tf.constant_initializer(conv_weights['conv2d_2/bias']), \
@@ -100,7 +102,8 @@ class Model:
             strides=1, activation=tf.nn.relu, padding = 'SAME', trainable=False)
 
         conv4 = tf.layers.max_pooling2d(inputs=conv4, pool_size=[2, 2], strides=2, padding='SAME')
-        conv4 = tf.nn.dropout(conv4, self.input_droput_keep_pct)
+        #conv4 = tf.nn.dropout(conv4, self.input_droput_keep_pct)
+        conv4 = tf.nn.dropout(conv4, self.conv_droput_keep_pct)
 
         return tf.reshape(conv4,[par['batch_size'], -1])
 
@@ -184,22 +187,32 @@ class Model:
         p_theta = tf.nn.softmax(self.y, dim = 1)
         # sample label from logits
         class_ind_one_hot = tf.cast(tf.squeeze(tf.one_hot(tf.multinomial(self.y, 1), par['layer_dims'][-1])), tf.float32)
+        #class_ind_one_hot = tf.cast(tf.squeeze(tf.one_hot(tf.multinomial(p_theta, 1), par['layer_dims'][-1])), tf.float32)
         log_p_theta = tf.unstack(class_ind_one_hot*tf.log(p_theta + epsilon), axis = 0)
+
 
         grad_dict = {}
         for var in self.variables_stabilization:
             grad_dict[var.op.name] = tf.zeros_like(var)
 
-        # Note:  par['batch_size']//2 should not be greater than ~150
+        # Note:  par['batch_size']//n should not be greater than ~150
         #        If this limit is reached, divide by a larger number and run
         #        more EWC batches to maintain both GPU memory and network
         #        performance
-        for i in range(par['batch_size']//2):
+        for i in range(par['batch_size']//4):
             for grad, var in opt.compute_gradients(log_p_theta[i], var_list = self.variables_stabilization):
                 grad_dict[var.op.name] += tf.square(grad)/par['batch_size']/par['EWC_fisher_num_batches']
 
         for var in self.variables_stabilization:
             fisher_ops.append(tf.assign_add(self.big_omega_var[var.op.name], grad_dict[var.op.name]))
+
+        """
+        for i in range(par['batch_size']//2):
+            grads_and_vars = opt.compute_gradients(log_p_theta[i], var_list = self.variables_stabilization)
+            for grad, var in grads_and_vars:
+                fisher_ops.append(tf.assign_add(self.big_omega_var[var.op.name], \
+                    grad*grad/par['batch_size']/par['EWC_fisher_num_batches']))
+        """
 
         self.update_big_omega = tf.group(*fisher_ops)
 
@@ -232,13 +245,16 @@ class Model:
         # This is called every batch
         with tf.control_dependencies([self.train_op]):
             self.delta_grads = adam_optimizer.return_delta_grads()
-            self.gradients = optimizer_task.compute_gradients(self.task_loss)
+            self.gradients = optimizer_task.compute_gradients(self.task_loss, var_list = self.variables_stabilization)
             for grad,var in self.gradients:
                 update_small_omega_ops.append(tf.assign_add(small_omega_var[var.op.name], -self.delta_grads[var.op.name]*grad ) )
             self.update_small_omega = tf.group(*update_small_omega_ops) # 1) update small_omega after each train!
 
 
-def main(save_fn, gpu_id = None):
+def main(save_fn, gpu_id=None):
+
+    # update all dependencies in parameters
+    update_dependencies()
 
     if gpu_id is not None:
         os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id
@@ -314,16 +330,23 @@ def main(save_fn, gpu_id = None):
 
             # Update big omegaes, and reset other values before starting new task
             if par['stabilization'] == 'pathint':
-                _, big_omegas = sess.run([model.update_big_omega, model.big_omega_var])
+                sess.run(model.update_big_omega)
             elif par['stabilization'] == 'EWC':
-                # Note the 2x multiplier -- check EWC function in model to verify
+                # Note the batch multiplier -- check EWC function in model to verify
                 # that precisely par['EWC_fisher_num_batches'] are being run once
                 # this loop is complete.  This is to preserve both GPU memory
                 # and network performance.
-                for _ in range(2*par['EWC_fisher_num_batches']):
+                for _ in range(4*par['EWC_fisher_num_batches']):
                     stim_in, _, mk = stim.make_batch(task, test = False)
+                    """
                     sess.run([model.update_big_omega], feed_dict = \
                         {x:stim_in, **gating_dict, mask:mk, droput_keep_pct:1.0, input_droput_keep_pct:1.0, rule:rule_cue})
+                    """
+                    sess.run([model.update_big_omega], feed_dict = \
+                        {x:stim_in, **gating_dict, mask:mk, droput_keep_pct:par['drop_keep_pct'], \
+                        input_droput_keep_pct:par['input_drop_keep_pct'], rule:rule_cue})
+
+
 
             # Reset the Adam Optimizer, and set the previous parater values to their current values
             sess.run(model.reset_adam_op)
@@ -359,3 +382,7 @@ def main(save_fn, gpu_id = None):
             pickle.dump(save_results, open(par['save_dir'] + save_fn, 'wb'))
 
     print('\nModel execution complete.')
+
+"""
+if __name__ == '__main__':
+    main('smart_gating_testing', '1')"""

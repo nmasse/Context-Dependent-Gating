@@ -53,7 +53,8 @@ class ConvolutionalLayers:
             W = {}
             for var in tf.trainable_variables():
                 W[var.op.name] = var.eval()
-            fn = par['save_dir'] + current_task + '_conv_weights.pkl'
+            #fn = par['save_dir'] + current_task + '_conv_weights.pkl'
+            fn = './savedir/conv_weights.pkl'
             pickle.dump(W, open(fn,'wb'))
             print('Convolutional weights saved in ', fn)
 
