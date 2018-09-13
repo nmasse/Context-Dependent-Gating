@@ -5,6 +5,9 @@ This code accompanies our paper:
 > Nicolas Y. Masse, Gregory D. Grant, David J. Freedman  
 > https://arxiv.org/abs/1802.01569  
 
+The recurrent network model can be found in the repository:
+> https://github.com/gdgrant/Context-Dependent-Gating-RNN
+
 Dependencies:  
 > Python 3  
 > TensorFlow 1+  
