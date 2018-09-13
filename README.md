@@ -1,4 +1,4 @@
-# Context-Dependent-Gating
+# Context-Dependent Gating
 
 This code accompanies our paper:
 > Alleviating catastrophic forgetting using context-dependent gating and synaptic stabilization  
