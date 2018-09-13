@@ -1,7 +1,6 @@
 ### Authors: Nicolas Y. Masse, Gregory D. Grant
 
 import numpy as np
-from itertools import product
 
 print("\n--> Loading parameters...")
 
@@ -22,33 +21,32 @@ par = {
     'reset_weights'                 : False, # Reset weights between tasks
 
     # Task specs
-    'n_tasks'               : 100,
-    'layer_dims'            : [28**2, 2000, 2000, 10], # mnist
-    #'layer_dims'            : [4096, 1000, 1000, 5], #cifar
-    'gate_pct'              : 0.8,   # percentage of hidden units to gate. Only used when gating_type is set to XdG
-    'n_subnetworks'         : 5,     # only used when gating_type is set to split
-    'multihead'             : False, # option for CIFAR task, in which different unique output units are asscoaited with each label
-    'include_rule_signal'   : False,
+    'n_tasks'                       : 100,
+    'layer_dims'                    : [28**2, 2000, 2000, 10], # mnist
+    #'layer_dims'                    : [4096, 1000, 1000, 5], #cifar
+    'multihead'                     : False, # option for CIFAR task, in which different unique output units are associated with each label
+    'include_rule_signal'           : False,
 
     # Dropout
-    'drop_keep_pct'         : 0.5,
-    'input_drop_keep_pct'   : 1.0,
-    'conv_drop_keep_pct'    : 0.75,
+    'drop_keep_pct'                 : 0.5,
+    'input_drop_keep_pct'           : 1.0,
+    'conv_drop_keep_pct'            : 0.75,
 
     # Training specs
-    'batch_size'            : 256,
-    'n_train_batches'       : 3906, # MNIST: 3906*256 = 20 epochs * 50000
-                                    # ImageNet: 977*256, likewise
-    'n_batches_top_down'    : 20000,
+    'batch_size'                    : 256,
+    'n_train_batches'               : 3906, # MNIST: 3906*256 = 20 epochs * 50000
+                                            # ImageNet: 977*256, likewise
+    'n_batches_top_down'            : 20000,
 
     # Omega parameters
-    'omega_c'               : 0.035,
-    'omega_xi'              : 0.01,
-    'EWC_fisher_num_batches': 32, # was 16, number of batches size when calculating EWC
+    'omega_c'                       : 0.035,
+    'omega_xi'                      : 0.01,
+    'EWC_fisher_num_batches'        : 32, # was 16, number of batches size when calculating EWC
 
-    # Type of gating signal
-    'gating_type'           : 'XdG', # can be either 'XdG', 'partial', 'split' or None
-    'smart_XdG'             : False
+    # Setting gating signal
+    'gating_type'                   : 'XdG', # can be 'XdG', 'partial', 'split' or None
+    'gate_pct'                      : 0.8,   # percentage of hidden units to gate. Only used when gating_type is set to XdG
+    'n_subnetworks'                 : 5,     # only used when gating_type is set to split
 }
 
 ############################
