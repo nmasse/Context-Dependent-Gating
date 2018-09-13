@@ -1,6 +1,5 @@
 import numpy as np
 import tensorflow as tf
-from itertools import product
 
 class AdamOpt:
 
@@ -63,7 +62,6 @@ class AdamOpt:
 
             self.update_var_op.append(tf.assign(self.m[var.op.name], new_m))
             self.update_var_op.append(tf.assign(self.v[var.op.name], new_v))
-            #self.update_var_op.append(tf.assign(self.delta_grads[var.op.name], delta_grad))
             self.update_var_op.append(tf.assign(self.delta_grads[var.op.name], delta_grad))
             if apply:
                 self.update_var_op.append(tf.assign_add(var, delta_grad))
