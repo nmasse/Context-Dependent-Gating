@@ -1,10 +1,12 @@
+### Context-Dependent Gating Feed-Forward Neural Network, for paper:
+### Alleviating catastrophic forgetting using context-dependent gating and synaptic stabilization
 ### Authors: Nicolas Y. Masse, Gregory D. Grant
 
 # Required packages
 import tensorflow as tf
 import numpy as np
 import pickle
-import os, sys, time
+import os, sys
 
 # Model modules
 from parameters import *
@@ -12,7 +14,8 @@ import stimulus
 import AdamOpt
 import convolutional_layers
 
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID" # so the IDs match nvidia-smi
+# Make GPU IDs match nvidia-smi
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 
 # Ignore startup TensorFlow warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
@@ -44,8 +47,7 @@ class Model:
 
     def run_model(self):
         """ Depending on the task, generate the input to the feedforward model
-            either through a convolutional network or with dropout.
-            """
+            either through a convolutional network or with dropout. """
 
         # Apply input condition
         if par['task'] == 'cifar' or par['task'] == 'imagenet':
@@ -105,19 +107,21 @@ class Model:
     def apply_convolutional_layers(self):
         """ Run the convolutional part of the model to reduce 32 x 32 x 3
             inputs to a smaller and more interpretable input vector.  The
-            convolutional weights are loaded from a file in /savedir/."""
+            convolutional weights are loaded from a file in /savedir/. """
 
         # Load weights
         conv_weights = pickle.load(open('./savedir/conv_weights.pkl','rb'))
 
         # Apply first two convolutional layers
         conv1 = tf.layers.conv2d(inputs=self.input_data,filters=32, kernel_size=[3, 3], kernel_initializer = \
-            tf.constant_initializer(conv_weights['conv2d/kernel']),  bias_initializer = tf.constant_initializer(conv_weights['conv2d/bias']), \
-            strides=1, activation=tf.nn.relu, padding = 'SAME', trainable=False)
+            tf.constant_initializer(conv_weights['conv2d/kernel']),  bias_initializer = \
+            tf.constant_initializer(conv_weights['conv2d/bias']),  strides=1, activation=tf.nn.relu, \
+            padding = 'SAME', trainable=False)
 
         conv2 = tf.layers.conv2d(inputs=conv1,filters=32, kernel_size=[3, 3], kernel_initializer = \
-            tf.constant_initializer(conv_weights['conv2d_1/kernel']),  bias_initializer = tf.constant_initializer(conv_weights['conv2d_1/bias']), \
-            strides=1, activation=tf.nn.relu, padding = 'SAME', trainable=False)
+            tf.constant_initializer(conv_weights['conv2d_1/kernel']),  bias_initializer = \
+            tf.constant_initializer(conv_weights['conv2d_1/bias']),  strides=1, activation=tf.nn.relu, \
+            padding = 'SAME', trainable=False)
 
         # Apply max pooling and dropout
         conv2 = tf.layers.max_pooling2d(inputs=conv2, pool_size=[2, 2], strides=2, padding='SAME')
@@ -125,12 +129,14 @@ class Model:
 
         # Apply next two convolutional layers
         conv3 = tf.layers.conv2d(inputs=conv2,filters=64, kernel_size=[3, 3], kernel_initializer = \
-            tf.constant_initializer(conv_weights['conv2d_2/kernel']),  bias_initializer = tf.constant_initializer(conv_weights['conv2d_2/bias']), \
-            strides=1, activation=tf.nn.relu, padding = 'SAME', trainable=False)
+            tf.constant_initializer(conv_weights['conv2d_2/kernel']),  bias_initializer = \
+            tf.constant_initializer(conv_weights['conv2d_2/bias']), strides=1, activation=tf.nn.relu, \
+            padding = 'SAME', trainable=False)
 
         conv4 = tf.layers.conv2d(inputs=conv3,filters=64, kernel_size=[3, 3], kernel_initializer = \
-            tf.constant_initializer(conv_weights['conv2d_3/kernel']),  bias_initializer = tf.constant_initializer(conv_weights['conv2d_3/bias']), \
-            strides=1, activation=tf.nn.relu, padding = 'SAME', trainable=False)
+            tf.constant_initializer(conv_weights['conv2d_3/kernel']),  bias_initializer = \
+            tf.constant_initializer(conv_weights['conv2d_3/bias']), strides=1, activation=tf.nn.relu, \
+            padding = 'SAME', trainable=False)
 
         # Apply max pooling and dropout
         conv4 = tf.layers.max_pooling2d(inputs=conv4, pool_size=[2, 2], strides=2, padding='SAME')
@@ -337,7 +343,7 @@ def main(save_fn, gpu_id=None):
     input_droput_keep_pct   = tf.placeholder(tf.float32, [], 'input_dropout')
 
     # Set up stimulus
-    stim    = stimulus.Stimulus(labels_per_task = par['labels_per_task'])
+    stim = stimulus.Stimulus(labels_per_task=par['labels_per_task'])
 
     # Initialize accuracy records
     accuracy_full = []
@@ -351,9 +357,8 @@ def main(save_fn, gpu_id=None):
         with tf.device(device):
             model = Model(x, y, gating, mask, droput_keep_pct, input_droput_keep_pct, rule)
 
-        # Initialize variables and start the timer
+        # Initialize variables
         sess.run(tf.global_variables_initializer())
-        t_start = time.time()
         sess.run(model.reset_prev_vars)
 
         # Begin training loop, iterating over tasks
@@ -378,7 +383,7 @@ def main(save_fn, gpu_id=None):
                         feed_dict={x:stim_in, y:y_hat, **gating_dict, mask:mk, droput_keep_pct:par['drop_keep_pct'], \
                         input_droput_keep_pct:par['input_drop_keep_pct'], rule:rule_cue})
                 elif par['stabilization'] == 'EWC':
-                    _,loss,AL = sess.run([model.train_op, model.task_loss, model.aux_loss], \
+                    _, loss, AL = sess.run([model.train_op, model.task_loss, model.aux_loss], \
                         feed_dict={x:stim_in, y:y_hat, **gating_dict, mask:mk, droput_keep_pct:par['drop_keep_pct'], \
                         input_droput_keep_pct:par['input_drop_keep_pct'], rule:rule_cue})
 
@@ -396,10 +401,6 @@ def main(save_fn, gpu_id=None):
                 # and network performance.
                 for _ in range(4*par['EWC_fisher_num_batches']):
                     stim_in, _, mk = stim.make_batch(task, test = False)
-                    """
-                    sess.run([model.update_big_omega], feed_dict = \
-                        {x:stim_in, **gating_dict, mask:mk, droput_keep_pct:1.0, input_droput_keep_pct:1.0, rule:rule_cue})
-                    """
                     sess.run([model.update_big_omega], feed_dict = \
                         {x:stim_in, **gating_dict, mask:mk, droput_keep_pct:par['drop_keep_pct'], \
                         input_droput_keep_pct:par['input_drop_keep_pct'], rule:rule_cue})
@@ -436,6 +437,7 @@ def main(save_fn, gpu_id=None):
             if par['reset_weights']:
                 sess.run(model.reset_weights)
 
+        # Save model performance and parameters if desired
         if par['save_analysis']:
             save_results = {'task': task, 'accuracy': accuracy, 'accuracy_full': accuracy_full, \
                             'accuracy_grid': accuracy_grid, 'par': par}
@@ -445,6 +447,8 @@ def main(save_fn, gpu_id=None):
 
 
 if __name__ == '__main__':
+    # To use a GPU, from command line do: python model.py <gpu_integer_id>
+    # To use CPU, just don't put a gpu id: python model.py
     try:
         if len(sys.argv) > 1:
             main('testing.pkl', sys.argv[1])
