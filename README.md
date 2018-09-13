@@ -18,7 +18,7 @@ In the paper, the model is tested on the following datasets:
 **CIFAR Dataset**
 > https://www.cs.toronto.edu/~kriz/cifar.html
 >
-> The dataset folders for CIFAR-10 and CIFAR-100 are extracted and placed separately in './cifar/', so accessing the data from stimulus.py will be, for example, './cifar/cifar-10-python/data_batch_1' or './cifar/cifar-100-python/test/'
+> The dataset folders for CIFAR-10 and CIFAR-100 are extracted and placed separately in './cifar/', so accessing the data from stimulus.py will be, for example, './cifar/cifar-10-python/data_batch_1' or './cifar/cifar-100-python/test'
 
 **ImageNet Dataset**
 >  http://image-net.org/
