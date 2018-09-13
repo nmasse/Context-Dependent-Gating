@@ -5,13 +5,16 @@ import sys, os
 import pickle
 
 
-def try_model(save_fn,gpu_id):
-
+def try_model(save_fn):
+    # To use a GPU, from command line do: python model.py <gpu_integer_id>
+    # To use CPU, just don't put a gpu id: python model.py
     try:
-        # Run model
-        model.main(save_fn, gpu_id)
+        if len(sys.argv) > 1:
+            model.main(save_fn, sys.argv[1])
+        else:
+            model.main(save_fn)
     except KeyboardInterrupt:
-        quit('Quit by KeyboardInterrupt')
+        print('Quit by KeyboardInterrupt.')
 
 ###############################################################################
 ###############################################################################
@@ -63,7 +66,8 @@ imagenet_split_updates = {'layer_dims':[4096, 3665, 3665, 10], 'multihead': Fals
 
 
 def recurse_best(data_dir, prefix):
-
+    """ Based on currently-saved files, look at the result of a network run
+        with an omega_c immediately between the two best saves. """
 
     # Get filenames
     name_and_data = []
@@ -88,10 +92,6 @@ def recurse_best(data_dir, prefix):
             cids.append(c)
         if f[-5] not in vids:
             vids.append(f[-5])
-
-    print(name_and_data)
-    print(cids)
-    print(vids)
 
     # Scan across c's and v's for accuracies
     accuracies = np.zeros((len(cids)))
@@ -131,14 +131,13 @@ def recurse_best(data_dir, prefix):
             opt_pars = pickle.load(open(data_dir + full_fn, 'rb'))['par']
 
     # Update parameters and run versions
-
     update_parameters(opt_pars)
     update_parameters({'omega_c' : cR})
     for i in range(5):
         save_fn = prefix + '_omegaR_v' + str(i) + '.pkl'
         print('save_fn', save_fn)
         print('save_dir', opt_pars['save_dir'])
-        try_model(save_fn, sys.argv[1])
+        try_model(save_fn)
         print(save_fn, cR)
 
 
@@ -151,12 +150,12 @@ def run_base():
     for i in range(0,5):
         save_fn = 'imagenet_weight_reset_v' + str(i) + '.pkl'
         #save_fn = 'imagenet_base_omega0_v' + str(i) + '.pkl'
-        try_model(save_fn, gpu_id)
+        try_model(save_fn)
 
     update_parameters(imagenet_multi_updates)
     for i in range(1,0):
         save_fn = 'imagenet_baseMH_v' + str(i) + '.pkl'
-        try_model(save_fn, gpu_id)
+        try_model(save_fn)
 
 def run_with_rule():
 
@@ -170,7 +169,7 @@ def run_with_rule():
         for j in range(len(omegas)):
             update_parameters({'omega_c':omegas[j]})
             save_fn = 'mnist_SI_rulecue_nogate_omega'+str(j)+'_v'+str(i)+'.pkl'
-            try_model(save_fn, gpu_id)
+            try_model(save_fn)
 
     update_parameters({'stabilization':'EWC'})
 
@@ -178,7 +177,7 @@ def run_with_rule():
         for j in range(len(omegas)):
             update_parameters({'omega_c':omegas[j]})
             save_fn = 'mnist_EWC_rulecue_nogate_omega'+str(j)+'_v'+str(i)+'.pkl'
-            try_model(save_fn, gpu_id)
+            try_model(save_fn)
 
 
 
@@ -194,14 +193,14 @@ def run_SI():
         for j in range(len(omegas)):
             update_parameters({'omega_c': omegas[j]})
             save_fn = 'imagenet_SI_omega' + str(j) + '_v' + str(i) + '.pkl'
-            try_model(save_fn, gpu_id)
+            try_model(save_fn)
 
     update_parameters(imagenet_multi_updates)
     for i in range(5):
         for j in range(len(omegas)):
             update_parameters({'omega_c': omegas[j]})
             save_fn = 'imagenet_SI_MH_omega' + str(j) + '_v' + str(i) + '.pkl'
-            try_model(save_fn, gpu_id)
+            try_model(save_fn)
 
 def run_partial_SI():
 
@@ -215,7 +214,7 @@ def run_partial_SI():
         for j in range(len(omegas)):
             update_parameters({'omega_c': omegas[j]})
             save_fn = 'imagenet_SI_partial_omega' + str(j) + '_v' + str(i) + '.pkl'
-            try_model(save_fn, gpu_id)
+            try_model(save_fn)
 
 def run_XdG_SI():
 
@@ -229,7 +228,7 @@ def run_XdG_SI():
         for j in range(0,1):
             update_parameters({'omega_c': omegas[j]})
             save_fn = 'imagenet_SI_XdG_omega' + str(j) + '_v' + str(i) + '.pkl'
-            try_model(save_fn, gpu_id)
+            try_model(save_fn)
 
 def run_split_SI():
 
@@ -244,7 +243,7 @@ def run_split_SI():
         for j in range(1,len(omegas)):
             update_parameters({'omega_c': omegas[j]})
             save_fn = 'imagenet_SI_split_omega' + str(j) + '_v' + str(i) + '.pkl'
-            try_model(save_fn, gpu_id)
+            try_model(save_fn)
 
 def run_split_EWC():
 
@@ -259,7 +258,7 @@ def run_split_EWC():
         for j in range(0,1):
             update_parameters({'omega_c': omegas[j]})
             save_fn = 'imagenet_EWC_split_omega' + str(j) + '_v' + str(i) + '.pkl'
-            try_model(save_fn, gpu_id)
+        try_model(save_fn)
 
 def run_partial_EWC():
 
@@ -273,7 +272,7 @@ def run_partial_EWC():
         for j in range(len(omegas)):
             update_parameters({'omega_c': omegas[j]})
             save_fn = 'imagenet_EWC_partial_omega' + str(j) + '_v' + str(i) + '.pkl'
-            try_model(save_fn, gpu_id)
+            try_model(save_fn)
 
 def run_XdG_EWC():
 
@@ -287,7 +286,7 @@ def run_XdG_EWC():
         for j in range(len(omegas)):
             update_parameters({'omega_c': omegas[j]})
             save_fn = 'imagenet_EWC_XdG_omega' + str(j) + '_v' + str(i) + '.pkl'
-            try_model(save_fn, gpu_id)
+            try_model(save_fn)
 
 
 def run_EWC():
@@ -302,29 +301,21 @@ def run_EWC():
         for j in range(len(omegas)-1, len(omegas)):
             update_parameters({'omega_c': omegas[j]})
             save_fn = 'imagenet_EWC_omega' + str(j) + '_v' + str(i) + '.pkl'
-            try_model(save_fn, gpu_id)
+            try_model(save_fn)
 
     update_parameters(imagenet_multi_updates)
     for i in range(5):
         for j in range(len(omegas)-1, len(omegas)):
             update_parameters({'omega_c': omegas[j]})
             save_fn = 'imagenet_EWC_MH_omega' + str(j) + '_v' + str(i) + '.pkl'
-            try_model(save_fn, gpu_id)
-
-# Second argument will select the GPU to use
-# Don't enter a second argument if you want TensorFlow to select the GPU/CPU
-try:
-    gpu_id = sys.argv[1]
-    print('Selecting GPU ', gpu_id)
-except:
-    gpu_id = None
+            try_model(save_fn)
 
 
-#recurse_best('/home/masse/Context-Dependent-Gating/savedir/ImageNet/', 'imagenet_EWC_split')
-#recurse_best('/home/masse/Context-Dependent-Gating/savedir/ImageNet/', 'imagenet_SI_split')
+#recurse_best('./savedir/ImageNet/', 'imagenet_EWC_split')
+#recurse_best('./savedir/ImageNet/', 'imagenet_SI_split')
 #run_EWC()
-#recurse_best('/home/masse/Context-Dependent-Gating/savedir/ImageNet/', 'imagenet_EWC_omega')
-#recurse_best('/home/masse/Context-Dependent-Gating/savedir/ImageNet/', 'imagenet_SI_XdG')
+#recurse_best('./savedir/ImageNet/', 'imagenet_EWC_omega')
+#recurse_best('./savedir/ImageNet/', 'imagenet_SI_XdG')
 
 #run_EWC()
 #run_base()
@@ -348,7 +339,7 @@ update_parameters({'gating_type': 'XdG','gate_pct': 0.80, 'input_drop_keep_pct':
 update_parameters({'stabilization': 'pathint', 'omega_c': 1.0, 'omega_xi': 0.01})
 update_parameters({'train_convolutional_layers': True})
 save_fn = 'imagenet_SI.pkl'
-try_model(save_fn, gpu_id)
+try_model(save_fn)
 quit()
 
 
@@ -357,14 +348,14 @@ update_parameters(mnist_updates)
 update_parameters({'gating_type': 'XdG','gate_pct': 0.8, 'input_drop_keep_pct': 0.8})
 update_parameters({'stabilization': 'pathint', 'omega_c': 0.035, 'omega_xi': 0.01})
 save_fn = 'mnist_SI.pkl'
-try_model(save_fn, gpu_id)
+try_model(save_fn)
 
 print('MNIST - Synaptic Stabilization = EWC - Gating = 80%')
 update_parameters(mnist_updates)
 update_parameters({'gating_type': 'XdG','gate_pct': 0.8, 'input_drop_keep_pct': 0.8})
 update_parameters({'stabilization': 'EWC', 'omega_c': 10})
 save_fn = 'mnist_EWC.pkl'
-try_model(save_fn, gpu_id)
+try_model(save_fn)
 
 print('CIFAR - Synaptic Stabilization = SI - Gating = 75%')
 update_parameters(cifar_updates)
@@ -372,7 +363,7 @@ update_parameters({'gating_type': 'XdG','gate_pct': 0.75, 'input_drop_keep_pct':
 update_parameters({'stabilization': 'pathint', 'omega_c': 0.2, 'omega_xi': 0.01})
 update_parameters({'train_convolutional_layers': True})
 save_fn = 'cifar_SI.pkl'
-try_model(save_fn, gpu_id)
+try_model(save_fn)
 
 print('CIFAR - Synaptic Stabilization = EWC - Gating = 75%')
 update_parameters(cifar_updates)
@@ -380,4 +371,4 @@ update_parameters({'gating_type': 'XdG','gate_pct': 0.75, 'input_drop_keep_pct':
 update_parameters({'stabilization': 'EWC', 'omega_c': 10})
 update_parameters({'train_convolutional_layers': False})
 save_fn = 'cifar_EWC.pkl'
-try_model(save_fn, gpu_id)
+try_model(save_fn)
