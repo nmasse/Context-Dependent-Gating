@@ -320,7 +320,7 @@ def main(save_fn, gpu_id=None):
     if gpu_id is not None:
         os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id
 
-    # If desired, train the convolutional layers with the CIFAR-10 dataset
+    # If desired, train the convolutional layers with the CIFAR datasets
     # Otherwise, the network will load convolutional weights from the saved file
     if (par['task'] == 'cifar' or par['task'] == 'imagenet') and par['train_convolutional_layers']:
         convolutional_layers.ConvolutionalLayers()
