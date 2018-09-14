@@ -22,8 +22,7 @@ par = {
 
     # Task specs
     'n_tasks'                       : 100,
-    'layer_dims'                    : [28**2, 2000, 2000, 10], # mnist
-    #'layer_dims'                    : [4096, 1000, 1000, 5], #cifar
+    'layer_dims'                    : [28**2, 2000, 2000, 10], # default for mnist
     'multihead'                     : False, # option for CIFAR task, in which different unique output units are associated with each label
     'include_rule_signal'           : False,
 
@@ -39,8 +38,8 @@ par = {
     'n_batches_top_down'            : 20000,
 
     # Omega parameters
-    'omega_c'                       : 0.035,
-    'omega_xi'                      : 0.01,
+    'omega_c'                       : 0.05,
+    'omega_xi'                      : 0.001,
     'EWC_fisher_num_batches'        : 32, # was 16, number of batches size when calculating EWC
 
     # Setting gating signal
