@@ -10,6 +10,7 @@ class Stimulus:
     def __init__(self, include_cifar10 = False, labels_per_task = 5, include_all = False):
 
         if par['task'] == 'mnist':
+            self.mnist_dir = './mnist/data/original'
             self.generate_mnist_tuning()
 
         elif par['task'] == 'cifar':
@@ -21,7 +22,7 @@ class Stimulus:
             self.find_indices()
 
         elif par['task'] == 'imagenet':
-            self.imagenet_dir = './ImageNet/'
+            self.imagenet_dir = '/home/masse/Context-Dependent-Gating/ImageNet/'
             self.num_labels = 1000
             self.labels_per_task = labels_per_task
             self.generate_imagenet_tuning()
@@ -38,7 +39,7 @@ class Stimulus:
 
         # Import MNIST data
         from mnist import MNIST
-        mndata = MNIST('./mnist/data/original')
+        mndata = MNIST(self.mnist_dir)
         self.mnist_train_images, self.mnist_train_labels = mndata.load_training()
         self.mnist_test_images,  self.mnist_test_labels  = mndata.load_testing()
 

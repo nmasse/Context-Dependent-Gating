@@ -5,14 +5,11 @@ import sys, os
 import pickle
 
 
-def try_model(save_fn):
+def try_model(save_fn, gpu_id = None):
     # To use a GPU, from command line do: python model.py <gpu_integer_id>
     # To use CPU, just don't put a gpu id: python model.py
     try:
-        if len(sys.argv) > 1:
-            model.main(save_fn, sys.argv[1])
-        else:
-            model.main(save_fn)
+        model.main(save_fn, gpu_id)
     except KeyboardInterrupt:
         print('Quit by KeyboardInterrupt.')
 
@@ -65,13 +62,13 @@ cifar_split_updates = {'layer_dims':[4096, 1164, 1164, 5], 'multihead': False}
 imagenet_split_updates = {'layer_dims':[4096, 3665, 3665, 10], 'multihead': False}
 
 
-def run_mnist_SI_model():
+def run_mnist_SI_model(gpu_id):
     print('MNIST - Synaptic Stabilization = SI - Gating = 80%')
     update_parameters(mnist_updates)
     update_parameters({'gating_type': 'XdG','gate_pct': 0.8, 'input_drop_keep_pct': 0.8})
     update_parameters({'stabilization': 'pathint', 'omega_c': 0.035, 'omega_xi': 0.01})
     save_fn = 'mnist_SI_XdG.pkl'
-    try_model(save_fn)
+    try_model(save_fn, gpu_id)
 
 
 def run_mnist_EWC_model():
@@ -80,27 +77,33 @@ def run_mnist_EWC_model():
     update_parameters({'gating_type': 'XdG','gate_pct': 0.8, 'input_drop_keep_pct': 0.8})
     update_parameters({'stabilization': 'EWC', 'omega_c': 10})
     save_fn = 'mnist_EWC_XdG.pkl'
-    try_model(save_fn)
+    try_model(save_fn, gpu_id)
 
 
-def run_imagenet_SI_model():
+def run_imagenet_SI_model(gpu_id):
     print('ImageNet - Synaptic Stabilization = SI - Gating = 80%')
     update_parameters(imagenet_updates)
     update_parameters({'gating_type': 'XdG','gate_pct': 0.80, 'input_drop_keep_pct': 1.0})
     update_parameters({'stabilization': 'pathint', 'omega_c': 1.0, 'omega_xi': 0.01})
     update_parameters({'train_convolutional_layers': True})
     save_fn = 'imagenet_SI_XdG.pkl'
-    try_model(save_fn)
+    try_model(save_fn, gpu_id)
 
 
-def run_imagenet_EWC_model():
+def run_imagenet_EWC_model(gpu_id):
     print('ImageNet - Synaptic Stabilization = SI - Gating = 80%')
     update_parameters(imagenet_updates)
     update_parameters({'gating_type': 'XdG','gate_pct': 0.80, 'input_drop_keep_pct': 1.0})
     update_parameters({'stabilization': 'EWC', 'omega_c': 10})
     update_parameters({'train_convolutional_layers': True})
     save_fn = 'imagenet_SI_XdG.pkl'
-    try_model(save_fn)
+    try_model(save_fn, gpu_id)
+
+def run_all(gpu_id):
+    run_mnist_SI_model(gpu_id)
+    run_mnist_EWC_model(gpu_id)
+    run_imagenet_SI_model(gpu_id)
+    run_imagenet_EWC_model(gpu_id)
 
 
 if __name__ == '__main__':
