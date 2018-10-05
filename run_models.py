@@ -71,7 +71,7 @@ def run_mnist_SI_model(gpu_id):
     try_model(save_fn, gpu_id)
 
 
-def run_mnist_EWC_model():
+def run_mnist_EWC_model(gpu_id):
     print('MNIST - Synaptic Stabilization = EWC - Gating = 80%')
     update_parameters(mnist_updates)
     update_parameters({'gating_type': 'XdG','gate_pct': 0.8, 'input_drop_keep_pct': 0.8})
