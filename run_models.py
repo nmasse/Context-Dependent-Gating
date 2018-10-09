@@ -78,7 +78,7 @@ def run_imagenet_SI_model(gpu_id):
     print('ImageNet - Synaptic Stabilization = SI - Gating = 80%')
     update_parameters(imagenet_updates)
     update_parameters({'gating_type': 'XdG','gate_pct': 0.80, 'input_drop_keep_pct': 1.0})
-    update_parameters({'stabilization': 'pathint', 'omega_c': 1.0, 'omega_xi': 0.01})
+    update_parameters({'stabilization': 'pathint', 'omega_c': 0.75, 'omega_xi': 0.01})
     update_parameters({'train_convolutional_layers': True})
     save_fn = 'imagenet_SI_XdG.pkl'
     try_model(save_fn, gpu_id)
