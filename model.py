@@ -106,10 +106,10 @@ class Model:
     def apply_convolutional_layers(self):
         """ Run the convolutional part of the model to reduce 32 x 32 x 3
             inputs to a smaller and more interpretable input vector.  The
-            convolutional weights are loaded from a file in /savedir/. """
+            convolutional weights are loaded from a file in par['save_dir']. """
 
         # Load weights
-        conv_weights = pickle.load(open('./savedir/conv_weights.pkl','rb'))
+        conv_weights = pickle.load(open(par['save_dir'] + 'conv_weights.pkl','rb'))
 
         # Apply first two convolutional layers
         conv1 = tf.layers.conv2d(inputs=self.input_data,filters=32, kernel_size=[3, 3], kernel_initializer = \

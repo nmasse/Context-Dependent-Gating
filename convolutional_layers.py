@@ -42,7 +42,7 @@ class ConvolutionalLayers:
 
             s = stimulus.Stimulus(include_cifar10 = True, labels_per_task = par['layer_dims'][-1], include_all = True)
 
-            for i in range(par['n_batches_top_down']):
+            for i in range(par['n_train_batches_conv']):
 
                 x, y, m = s.make_batch(task_id, test = False)
                 _, loss  = sess.run([self.train_op, self.loss], feed_dict = {input_data:x, target_data: y, mask:m})
@@ -53,8 +53,7 @@ class ConvolutionalLayers:
             W = {}
             for var in tf.trainable_variables():
                 W[var.op.name] = var.eval()
-            #fn = par['save_dir'] + current_task + '_conv_weights.pkl'
-            fn = './savedir/conv_weights.pkl'
+            fn = par['save_dir'] + current_task + '_conv_weights.pkl'
             pickle.dump(W, open(fn,'wb'))
             print('Convolutional weights saved in ', fn)
 

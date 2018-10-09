@@ -35,7 +35,7 @@ par = {
     'batch_size'                    : 256,
     'n_train_batches'               : 3906, # MNIST: 3906*256 = 20 epochs * 50000
                                             # ImageNet: 977*256, likewise
-    'n_batches_top_down'            : 20000,
+    'n_train_batches_conv'          : 20000,
 
     # Omega parameters
     'omega_c'                       : 0.05,
