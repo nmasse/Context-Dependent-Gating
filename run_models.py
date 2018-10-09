@@ -6,8 +6,8 @@ import pickle
 
 
 def try_model(save_fn, gpu_id = None):
-    # To use a GPU, from command line do: python model.py <gpu_integer_id>
-    # To use CPU, just don't put a gpu id: python model.py
+    # Specify GPU Id as a string
+    # Leave blank to use CPU
     try:
         model.main(save_fn, gpu_id)
     except KeyboardInterrupt:
