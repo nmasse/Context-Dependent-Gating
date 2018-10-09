@@ -52,7 +52,7 @@ imagenet_updates = {
     'multihead'             : False
     }
 
-# updates for multi-head network, cifar only
+# updates for multi-head network, Cifar and Imagenet only
 multi_updates = {'layer_dims':[4096, 1000, 1000, 100], 'multihead': True}
 imagenet_multi_updates = {'layer_dims':[4096, 2000, 2000, 1000], 'multihead': True}
 
@@ -62,6 +62,8 @@ cifar_split_updates = {'layer_dims':[4096, 1164, 1164, 5], 'multihead': False}
 imagenet_split_updates = {'layer_dims':[4096, 3665, 3665, 10], 'multihead': False}
 
 
+# training a network on 100 sequential MNIST permutations using synaptic intelligence 
+# and context-dependent gating (XdG) 
 def run_mnist_SI_model(gpu_id):
     print('MNIST - Synaptic Stabilization = SI - Gating = 80%')
     update_parameters(mnist_updates)
@@ -70,7 +72,8 @@ def run_mnist_SI_model(gpu_id):
     save_fn = 'mnist_SI_XdG.pkl'
     try_model(save_fn, gpu_id)
 
-
+# training a network on 100 sequential Imagenet tasks using synaptic intelligence 
+# and context-dependent gating (XdG) 
 def run_imagenet_SI_model(gpu_id):
     print('ImageNet - Synaptic Stabilization = SI - Gating = 80%')
     update_parameters(imagenet_updates)
