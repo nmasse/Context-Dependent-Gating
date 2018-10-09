@@ -40,7 +40,8 @@ par = {
     # Omega parameters
     'omega_c'                       : 0.05,
     'omega_xi'                      : 0.001,
-    'EWC_fisher_num_batches'        : 32, # was 16, number of batches size when calculating EWC
+    'EWC_fisher_num_batches'        : 32, # number of batches to use for calculating EWC
+    'EWC_batch_divisor'             : 4, # for computational efficiency, only use a fraction of each batch when calculating EWC
 
     # Setting gating signal
     'gating_type'                   : 'XdG', # can be 'XdG', 'partial', 'split' or None

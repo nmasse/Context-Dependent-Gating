@@ -72,8 +72,7 @@ class Model:
                 # Generate weight and bias for this layer
                 W = tf.get_variable('W', initializer=tf.random_uniform([par['layer_dims'][n],par['layer_dims'][n+1]], \
                     -1.0/np.sqrt(par['layer_dims'][n]), 1.0/np.sqrt(par['layer_dims'][n])), trainable=True)
-                b = tf.get_variable('b', initializer=tf.zeros([1,par['layer_dims'][n+1]]), \
-                    trainable = True if n<par['n_layers']-2 else False)
+                b = tf.get_variable('b', initializer=tf.zeros([1,par['layer_dims'][n+1]]), trainable = True)
 
                 # If this is not the last hidden layer, proceed normally.  If
                 # it is, generate the output
@@ -239,7 +238,7 @@ class Model:
         """ Synaptic stabilization via the Kirkpatrick method """
 
         # Set up method
-        epsilon = 1e-16
+        epsilon = 1e-6
         fisher_ops = []
         opt = tf.train.GradientDescentOptimizer(1.)
 
@@ -258,7 +257,7 @@ class Model:
         #        If this limit is reached, divide by a larger number and run
         #        more EWC batches to maintain both GPU memory requirements
         #        and network performance
-        for i in range(par['batch_size']//4):
+        for i in range(par['batch_size']//par['EWC_batch_divisor']):
 
             # Compute gradients for each sample
             for grad, var in opt.compute_gradients(log_p_theta[i], var_list = self.variables_stabilization):
@@ -395,11 +394,7 @@ def main(save_fn, gpu_id=None):
             if par['stabilization'] == 'pathint':
                 sess.run(model.update_big_omega)
             elif par['stabilization'] == 'EWC':
-                # Note the batch multiplier -- check EWC function in model to verify
-                # that precisely par['EWC_fisher_num_batches'] are being run once
-                # this loop is complete.  This is to preserve both GPU memory
-                # and network performance.
-                for _ in range(4*par['EWC_fisher_num_batches']):
+                for _ in range(par['EWC_batch_divisor']*par['EWC_fisher_num_batches']):
                     stim_in, _, mk = stim.make_batch(task, test = False)
                     sess.run([model.update_big_omega], feed_dict = \
                         {x:stim_in, **gating_dict, mask:mk, droput_keep_pct:par['drop_keep_pct'], \
@@ -444,15 +439,3 @@ def main(save_fn, gpu_id=None):
             pickle.dump(save_results, open(par['save_dir'] + save_fn, 'wb'))
 
     print('\nModel execution complete.')
-
-
-if __name__ == '__main__':
-    # To use a GPU, from command line do: python model.py <gpu_integer_id>
-    # To use CPU, just don't put a gpu id: python model.py
-    try:
-        if len(sys.argv) > 1:
-            main('testing.pkl', sys.argv[1])
-        else:
-            main('testing.pkl')
-    except KeyboardInterrupt:
-        print('Quit by KeyboardInterrupt.')

@@ -71,15 +71,6 @@ def run_mnist_SI_model(gpu_id):
     try_model(save_fn, gpu_id)
 
 
-def run_mnist_EWC_model(gpu_id):
-    print('MNIST - Synaptic Stabilization = EWC - Gating = 80%')
-    update_parameters(mnist_updates)
-    update_parameters({'gating_type': 'XdG','gate_pct': 0.8, 'input_drop_keep_pct': 0.8})
-    update_parameters({'stabilization': 'EWC', 'omega_c': 10})
-    save_fn = 'mnist_EWC_XdG.pkl'
-    try_model(save_fn, gpu_id)
-
-
 def run_imagenet_SI_model(gpu_id):
     print('ImageNet - Synaptic Stabilization = SI - Gating = 80%')
     update_parameters(imagenet_updates)
@@ -88,24 +79,3 @@ def run_imagenet_SI_model(gpu_id):
     update_parameters({'train_convolutional_layers': True})
     save_fn = 'imagenet_SI_XdG.pkl'
     try_model(save_fn, gpu_id)
-
-
-def run_imagenet_EWC_model(gpu_id):
-    print('ImageNet - Synaptic Stabilization = SI - Gating = 80%')
-    update_parameters(imagenet_updates)
-    update_parameters({'gating_type': 'XdG','gate_pct': 0.80, 'input_drop_keep_pct': 1.0})
-    update_parameters({'stabilization': 'EWC', 'omega_c': 10})
-    update_parameters({'train_convolutional_layers': True})
-    save_fn = 'imagenet_SI_XdG.pkl'
-    try_model(save_fn, gpu_id)
-
-def run_all(gpu_id):
-    run_mnist_SI_model(gpu_id)
-    run_mnist_EWC_model(gpu_id)
-    run_imagenet_SI_model(gpu_id)
-    run_imagenet_EWC_model(gpu_id)
-
-
-if __name__ == '__main__':
-    print('Running MNIST SI model with gating by defualt...\n')
-    run_mnist_SI_model()
