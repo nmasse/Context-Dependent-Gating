@@ -22,7 +22,7 @@ class Stimulus:
             self.find_indices()
 
         elif par['task'] == 'imagenet':
-            self.imagenet_dir = '/home/masse/Context-Dependent-Gating/ImageNet/'
+            self.imagenet_dir = './ImageNet/'
             self.num_labels = 1000
             self.labels_per_task = labels_per_task
             self.generate_imagenet_tuning()
@@ -72,13 +72,13 @@ class Stimulus:
             self.train_images = np.vstack((self.train_images, x['data'])) if self.train_images.size else x['data']
 
             # Extract the labels and put them in an array
-            labels = np.reshape(np.array(x['labels']),(-1,1))
+            labels = np.reshape(np.array(x['labels']),(-1,1)) - 1
             self.train_labels = np.vstack((self.train_labels, labels))  if self.train_labels.size else labels
 
         # Load the testing data
         x = pickle.load(open(self.imagenet_dir + 'val_data','rb'))
         self.test_images = np.array(x['data'])
-        self.test_labels = np.reshape(np.array(x['labels']),(-1,1))
+        self.test_labels = np.reshape(np.array(x['labels']),(-1,1)) - 1
 
 
     def generate_cifar_tuning(self, include_cifar10=False, include_all=False):
