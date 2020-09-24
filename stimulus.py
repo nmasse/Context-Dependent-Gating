@@ -26,7 +26,7 @@ class Stimulus:
         (self.mnist_images, self.mnist_labels), _ = tf.keras.datasets.mnist.load_data()
         self.mnist_images = np.array(self.mnist_images)/255
         self.n_images = self.mnist_images.shape[0]
-        
+
 
     def generate_batch(self):
         """ Generate a batch of randomly permuted MNIST images, based

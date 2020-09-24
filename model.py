@@ -34,7 +34,6 @@ class Model:
         self.action = []
         self.reward = []
         self.activity = []
-        self.reward.append(tf.constant(np.zeros((self.config['batch_size'], 1), dtype = np.float32)))
 
         # intial LSTM anactivity
         h = tf.zeros((self.config['batch_size'], self.config['size_lstm']), dtype = tf.float32)
@@ -80,7 +79,7 @@ class Model:
                     self.config['n_output']), dtype = tf.float32)
                 b = tf.get_variable('b', shape = (1, self.config['n_output']), \
                     initializer = tf.zeros_initializer(), dtype = tf.float32)
-                W_effective = W * dynamic_W
+                W_effective = W * (1 + dynamic_W)
 
             pol_out = tf.einsum('bi,bij->bj', x, W_effective) + b
 
@@ -97,9 +96,6 @@ class Model:
             self.action.append(action)
             self.reward.append(reward)
             self.activity.append(h)
-
-        # Reward and mask trimming where necessary
-        self.reward = self.reward[1:]
 
 
     def recurrent_cell(self, h, c, rnn_input, lstm_size, scope_prefix):

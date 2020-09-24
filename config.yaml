@@ -1,5 +1,6 @@
-batch_size: 256
-n_output_rotations: 3
+batch_size: 128
+n_output_rotations: 2
+use_gpu: True
 
 n_input: 784
 n_output: 10
@@ -8,10 +9,10 @@ size_feedforward:
   - 800
   - 800
 
-learning_rate: 0.001
+learning_rate: 0.0001
 value_cost: 0.01
 entropy_cost: 0.01
-discount_rate: 0.95
+discount_rate: 0.9
 
 trials_per_sequence: 5
 n_iterations: 100000
