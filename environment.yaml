@@ -1,0 +1,16 @@
+# Dependencies for task_switching
+# USAGE (from working directory):
+# conda env create -f environment.yaml
+# conda activate task_switching
+# pip install -e .
+
+name: task_switching
+
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - pip=19.1.1
+  - pyyaml=5.3.1
+  - pip:
+    - tensorflow-gpu==2.3.0
