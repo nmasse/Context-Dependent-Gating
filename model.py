@@ -105,6 +105,7 @@ class Model:
 
         # split the neural activity, and project from each part to
         # different layers
+        assert self.config['batch_size'] % self.n_layers == 0, 'size_lstm must be a multiple of the number of layers'
         h_split = tf.reshape(h, (self.config['batch_size'], self.n_layers, -1))
         h_split = tf.unstack(h_split, axis = 1)
 
@@ -214,8 +215,8 @@ class Model:
             # options:  W * (1 + dynamic_W),
             #           W * dynamic_W
             #           W + dynamic_W
-            return activation(tf.einsum('bi,bij->bj', x, W * (1 + dynamic_W)) + b, name = 'output')
-            #return activation(tf.einsum('bi,bij->bj', x, W + dynamic_W) + b, name = 'output')
+            #return activation(tf.einsum('bi,bij->bj', x, W * (1 + dynamic_W)) + b, name = 'output')
+            return activation(tf.einsum('bi,bij->bj', x, W + dynamic_W) + b, name = 'output')
 
         else:
             return activation(x @ W + b, name = 'output')
