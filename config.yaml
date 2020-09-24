@@ -1,6 +1,6 @@
 batch_size: 256
 n_output_rotations: 2
-use_gpu: False
+use_gpu: True
 
 n_input: 784
 n_output: 10
@@ -9,6 +9,11 @@ size_feedforward:
   - 500
   - 500
   - 500
+dynamic_weights_rank:
+  - 0
+  - 0
+  - 2
+  - 0
 
 learning_rate: 0.0002
 value_cost: 0.01
