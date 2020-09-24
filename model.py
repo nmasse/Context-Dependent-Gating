@@ -42,7 +42,9 @@ class Model:
         # intial LSTM activity
         with tf.variable_scope('initial_activity', reuse = tf.AUTO_REUSE):
             h = tf.get_variable('h', shape = (1, self.config['size_lstm']), dtype = tf.float32)
+            #c = tf.get_variable('c', shape = (1, self.config['size_lstm']), dtype = tf.float32)
         h = tf.tile(h, (self.config['batch_size'], 1))
+        #c = tf.tile(c, (self.config['batch_size'], 1))
         c = tf.zeros((self.config['batch_size'], self.config['size_lstm']), dtype = tf.float32)
 
         # initial action
@@ -65,11 +67,8 @@ class Model:
 
                 # the activity of the second to last layer will project
                 # to the LSTM
-                if j == self.n_layers - 2:
+                if j == 1:
                     penultimate_layer = x
-
-            lstm_input = tf.concat((penultimate_layer, action, reward), axis = -1)
-            h, c = self.recurrent_cell(h, c, lstm_input, self.config['size_lstm'], 'LSTM')
 
             pol_out        = x
             val_out        = self.dense(h, 1, scope = 'value', activation = tf.identity)
@@ -79,26 +78,15 @@ class Model:
 
             reward         = tf.reduce_sum(action*target, axis=1, keepdims=True)
 
+            lstm_input = tf.concat((penultimate_layer, action, reward), axis = -1)
+            h, c = self.recurrent_cell(h, c, lstm_input, self.config['size_lstm'], 'LSTM')
+
             # Record RL outputs
             self.pol_out.append(pol_out)
             self.val_out.append(val_out)
             self.action.append(action)
             self.reward.append(reward)
             self.activity.append(h)
-
-
-    def dynamic_layer(self, x, dynamic_W, n_output, scope, bias = True, activation = tf.nn.relu):
-
-        with tf.variable_scope(scope, reuse = tf.AUTO_REUSE):
-
-            W = tf.get_variable('W', shape = [x.shape[-1], n_output], dtype = tf.float32)
-            b = tf.get_variable('b', shape = [1, n_output], initializer = tf.zeros_initializer(), \
-                dtype = tf.float32) if bias else 0.
-
-        W_effective = W * (1 + dynamic_W)
-
-        return activation(tf.einsum('bi,bij->bj', x, W_effective) + b, name = 'output')
-
 
 
     def create_low_rank_weights(self, h):
@@ -215,8 +203,8 @@ class Model:
             # options:  W * (1 + dynamic_W),
             #           W * dynamic_W
             #           W + dynamic_W
-            #return activation(tf.einsum('bi,bij->bj', x, W * (1 + dynamic_W)) + b, name = 'output')
-            return activation(tf.einsum('bi,bij->bj', x, W + dynamic_W) + b, name = 'output')
+            return activation(tf.einsum('bi,bij->bj', x, W * (1 + dynamic_W)) + b, name = 'output')
+            #return activation(tf.einsum('bi,bij->bj', x, W + dynamic_W) + b, name = 'output')
 
         else:
             return activation(x @ W + b, name = 'output')

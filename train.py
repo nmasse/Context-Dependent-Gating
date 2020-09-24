@@ -25,7 +25,7 @@ def main():
     with tf.Session() as sess:
 
         # Select CPU or GPU
-        device = '/gpu:0' if config['use_gpu'] else '/cpu:0' 
+        device = '/gpu:0' if config['use_gpu'] else '/cpu:0'
         with tf.device(device):
             # Check order against args unpacking in model if editing
             model = Model(input_pl, target_pl, lr_pl, config)
@@ -59,7 +59,7 @@ def main():
 
 
             # Display network performance
-            if i%100 == 0:
+            if i%200 == 0:
                 print('Iteration ', i, 'activity', mean_activity)
                 print('Accuracy ', accuracy)
                 print()
