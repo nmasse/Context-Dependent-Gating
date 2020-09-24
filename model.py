@@ -39,8 +39,10 @@ class Model:
         self.reward = []
         self.activity = []
 
-        # intial LSTM anactivity
-        h = tf.zeros((self.config['batch_size'], self.config['size_lstm']), dtype = tf.float32)
+        # intial LSTM activity
+        with tf.variable_scope('initial_activity', reuse = tf.AUTO_REUSE):
+            h = tf.get_variable('h', shape = (1, self.config['size_lstm']), dtype = tf.float32)
+        h = tf.tile(h, (self.config['batch_size'], 1))
         c = tf.zeros((self.config['batch_size'], self.config['size_lstm']), dtype = tf.float32)
 
         # initial action
@@ -48,8 +50,7 @@ class Model:
         # initial reward
         reward = tf.zeros((self.config['batch_size'], 1), dtype = tf.float32)
 
-
-        # Loop through the neural inputs, indexed in time
+        # loop through the neural inputs, indexed in time
         for i, (input, target) in enumerate(zip(self.input_data, self.target_data)):
 
             x = input
@@ -60,13 +61,7 @@ class Model:
 
             for j in range(self.n_layers):
 
-                if dynamic_W[j] is None:
-                    # if no low-rank weights created for this layer,
-                    # then use standard dense layer
-                    x = self.dense(x, self.layer_dims[j+1], 'feedforward'+str(j))
-                else:
-                    x = self.dynamic_layer(x, dynamic_W[j], self.layer_dims[j+1],
-                                           'feedforward'+str(j))
+                x = self.dense(x, self.layer_dims[j+1], 'feedforward'+str(j), dynamic_W = dynamic_W[j])
 
                 # the activity of the second to last layer will project
                 # to the LSTM
@@ -204,7 +199,7 @@ class Model:
 
 
 
-    def dense(self, x, n_output, scope, bias = True, activation = tf.nn.relu):
+    def dense(self, x, n_output, scope, bias = True, activation = tf.nn.relu, dynamic_W = None):
 
         with tf.variable_scope(scope, reuse = tf.AUTO_REUSE):
 
@@ -212,4 +207,15 @@ class Model:
             b = tf.get_variable('b', shape = [1, n_output], initializer = tf.zeros_initializer(), \
                 dtype = tf.float32) if bias else 0.
 
-        return activation(x @ W + b, name = 'output')
+        if dynamic_W is not None:
+
+            # TODO: not sure of the best way to combine learned weights (W)
+            # and dynamic weights
+            # options:  W * (1 + dynamic_W),
+            #           W * dynamic_W
+            #           W + dynamic_W
+            return activation(tf.einsum('bi,bij->bj', x, W * (1 + dynamic_W)) + b, name = 'output')
+            #return activation(tf.einsum('bi,bij->bj', x, W + dynamic_W) + b, name = 'output')
+
+        else:
+            return activation(x @ W + b, name = 'output')
