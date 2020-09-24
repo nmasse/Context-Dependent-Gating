@@ -51,37 +51,45 @@ class Model:
             x = input
             for j, d in enumerate(self.config['size_feedforward']):
 
-                x = self.dense(x, d, 'feedforward'+str(j))
-
-                # use the output of the 0th feedforward layer as input into the LSTM
-                if j == 0:
-                    h, c = self.recurrent_cell(h, c, x, self.config['size_lstm'], 'LSTM')
-
-
-            # generate the low rank matrix
-            # not sure if this should be done before or after the LSTM loop is run
-            u =  self.dense(h, 2*self.config['size_feedforward'][-1], 'u', activation = tf.identity)
-            v =  self.dense(h, 2*self.config['n_output'], 'v', activation = tf.identity)
-            u  = tf.reshape(u,  (self.config['batch_size'], self.config['size_feedforward'][-1], 2))
-            v  = tf.reshape(v,  (self.config['batch_size'], self.config['n_output'], 2))
-            u  = tf.unstack(u, axis = -1)
-            v  = tf.unstack(v, axis = -1)
-
-            # calculate rank 2 dynamic matrix
-            dynamic_W = u[0][:, :, tf.newaxis] @ v[0][:, tf.newaxis, :] + \
-                u[1][:, :, tf.newaxis] @ v[1][:, tf.newaxis, :]
+                if j < len(self.config['size_feedforward']) - 1:
+                    x = self.dense(x, d, 'feedforward'+str(j))
+                else:
+                    x = tf.nn.relu(tf.einsum('bi,bij->bj', x, W_effective) + b)
 
 
-            # weights to the output layer will consist of standard trainable weights,
-            # multiplied with rank-2 dynamic weights calculated above
-            with tf.variable_scope('policy', reuse = tf.AUTO_REUSE):
-                W = tf.get_variable('W', shape = (1, self.config['size_feedforward'][-1], \
-                    self.config['n_output']), dtype = tf.float32)
-                b = tf.get_variable('b', shape = (1, self.config['n_output']), \
-                    initializer = tf.zeros_initializer(), dtype = tf.float32)
-                W_effective = W * (1 + dynamic_W)
+                # use the output of the second layer as input into the LSTM
+                if j == 1:
+                    lstm_input = tf.concat((x, 3*action, 3*reward), axis = -1)
+                    h, c = self.recurrent_cell(h, c, lstm_input, self.config['size_lstm'], 'LSTM')
 
-            pol_out = tf.einsum('bi,bij->bj', x, W_effective) + b
+                # generate the low rank matrix
+                # not sure if this should be done before or after the LSTM loop is run
+                u =  self.dense(h, 2*self.config['size_feedforward'][-2], 'u', activation = tf.identity)
+                v =  self.dense(h, 2*self.config['size_feedforward'][-1], 'v', activation = tf.identity)
+                u  = tf.reshape(u,  (self.config['batch_size'], self.config['size_feedforward'][-2], 2))
+                v  = tf.reshape(v,  (self.config['batch_size'], self.config['size_feedforward'][-1], 2))
+                u  = tf.unstack(u, axis = -1)
+                v  = tf.unstack(v, axis = -1)
+
+                # calculate rank 2 dynamic matrix
+                dynamic_W = u[0][:, :, tf.newaxis] @ v[0][:, tf.newaxis, :] + \
+                    u[1][:, :, tf.newaxis] @ v[1][:, tf.newaxis, :]
+
+
+                # weights to the output layer will consist of standard trainable weights,
+                # multiplied with rank-2 dynamic weights calculated above
+                with tf.variable_scope('penultimate_layer', reuse = tf.AUTO_REUSE):
+
+                    W = tf.get_variable('W', shape = (self.config['size_feedforward'][-1], \
+                        self.config['size_feedforward'][-2]), dtype = tf.float32)
+                    b = tf.get_variable('b', shape = (1, self.config['size_feedforward'][-1]), \
+                        initializer = tf.zeros_initializer(), dtype = tf.float32)
+
+                    W_effective = W * (1 + dynamic_W)
+
+
+            #pol_out = tf.einsum('bi,ij->bj', x, W_pol) + b_pol
+            pol_out        = self.dense(h, self.config['n_output'], scope = 'policy', activation = tf.identity)
 
             val_out        = self.dense(h, 1, scope = 'value', activation = tf.identity)
             action_index   = tf.multinomial(pol_out, 1)
