@@ -3,7 +3,7 @@
 This code accompanies our paper:
 > Alleviating catastrophic forgetting using context-dependent gating and synaptic stabilization  
 > Nicolas Y. Masse, Gregory D. Grant, David J. Freedman  
-> https://arxiv.org/abs/1802.01569  
+> https://www.pnas.org/content/115/44/E10467
 
 The recurrent network model can be found in the repository:
 > https://github.com/gdgrant/Context-Dependent-Gating-RNN
