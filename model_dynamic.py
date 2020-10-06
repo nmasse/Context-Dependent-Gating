@@ -170,7 +170,7 @@ class Model:
             print('W', W)
             print('dynamic_W', dynamic_W)
             #return activation(tf.einsum('bi,bij->bj', x, W * (1+dynamic_W)) + b, name = 'output')
-            W_eff = W + dynamic_W
+            W_eff = 0.*W + dynamic_W
 
             return activation(tf.einsum('bi,bij->bj', x, W_eff) + b + bias, name = 'output')
         else:
