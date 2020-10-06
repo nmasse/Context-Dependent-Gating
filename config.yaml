@@ -1,10 +1,14 @@
-batch_size: 256
-n_output_rotations: 2
+batch_size: 128
+n_output_rotations: 50
 use_gpu: True
 
+bias_or_dyn: 'bias'
+
+
+n_timesteps: 1
 n_input: 784
 n_output: 10
-size_lstm: 300
+#size_lstm: 256
 size_feedforward:
   - 500
   - 500
@@ -15,10 +19,10 @@ dynamic_weights_rank:
   - 2
   - 0
 
-learning_rate: 0.0002
-value_cost: 0.01
-entropy_cost: 0.001
-discount_rate: 0.9
+learning_rate: 0.001
+#value_cost: 0.1
+#entropy_cost: 0.01
+#discount_rate: 0.9
 
-trials_per_sequence: 5
-n_iterations: 100000
+trials_per_sequence: 1
+n_iterations: 20000
